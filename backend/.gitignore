@@ -1,0 +1,6 @@
+# 演示数据库（本地生成，不提交）
+data/*.db
+data/*.db-journal
+# 虚拟环境
+venv/
+__pycache__/

@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+venv/
+# SQLite demo databases
+*.db
+# Node
+node_modules/
+dist/
+# Runtime
+.agent-guard.pids
+*.log
+# Env
+.env
+.DS_Store

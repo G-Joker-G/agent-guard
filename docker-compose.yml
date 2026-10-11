@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: ./backend
+    container_name: agent-guard-backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - AGENT_GUARD_DB_PATH=/data/agent_guard.db
+    volumes:
+      - agent-guard-data:/data
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: agent-guard-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  agent-guard-data:

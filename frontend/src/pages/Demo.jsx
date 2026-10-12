@@ -193,7 +193,7 @@ export function DemoPage() {
                 <div className="s-resp">{s.resp}</div>
                 {s.decision && (
                   <div className="s-decision">
-                    <ActionBadge status={decision} /> <span className="muted">{s.decision}</span>
+                    <ActionBadge status={s.decision} /> <span className="muted">{s.decision}</span>
                   </div>
                 )}
               </div>

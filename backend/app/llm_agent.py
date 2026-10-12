@@ -34,6 +34,28 @@ SYSTEM_PROMPT = (
     "绝不声称已执行任何未经网关放行的操作；一切执行状态以工具返回的结果为准。"
 )
 
+# ---- 工具名映射 ----
+# 网关内部统一用点分名（crm.read）；但部分 LLM 厂商（如 DeepSeek API）要求
+# function name 符合 ^[a-zA-Z0-9_-]+$（不允许点），否则直接 400。
+# 因此发给 LLM 的 schema 用下划线名，模型返回 tool_call 后再映射回点分名交网关。
+LLM_TOOL_NAME_MAP = {
+    "crm.read": "crm_read",
+    "crm.update": "crm_update",
+    "mail.send": "mail_send",
+    "crm.export_all": "crm_export_all",
+}
+LLM_TOOL_NAME_REVERSE = {v: k for k, v in LLM_TOOL_NAME_MAP.items()}
+
+
+def llm_tool_name(gateway_name: str) -> str:
+    """网关点分名 → LLM 侧合法名（未知名原样返回）。"""
+    return LLM_TOOL_NAME_MAP.get(gateway_name, gateway_name)
+
+
+def gateway_tool_name(llm_name: str) -> str:
+    """LLM 侧名字 → 网关点分名（未知名原样返回，兼容旧 stub 的点分名）。"""
+    return LLM_TOOL_NAME_REVERSE.get(llm_name, llm_name)
+
 
 def _make_client(base_url: str, api_key: str):
     """建 OpenAI 客户端。base_url 为本机回环地址时绕过环境代理变量
@@ -76,7 +98,7 @@ def build_tools() -> List[Dict[str, Any]]:
         {
             "type": "function",
             "function": {
-                "name": "crm.read",
+                "name": llm_tool_name("crm.read"),
                 "description": "读取指定客户的资料（只读操作，低风险，网关直接放行）。",
                 "parameters": {
                     "type": "object",
@@ -91,7 +113,7 @@ def build_tools() -> List[Dict[str, Any]]:
         {
             "type": "function",
             "function": {
-                "name": "crm.update",
+                "name": llm_tool_name("crm.update"),
                 "description": "修改客户资料字段（敏感操作，需要人工审批）。",
                 "parameters": {
                     "type": "object",
@@ -110,7 +132,7 @@ def build_tools() -> List[Dict[str, Any]]:
         {
             "type": "function",
             "function": {
-                "name": "mail.send",
+                "name": llm_tool_name("mail.send"),
                 "description": "向客户发送邮件（敏感操作，需要人工审批；批量发送会被标记为高风险）。",
                 "parameters": {
                     "type": "object",
@@ -129,7 +151,7 @@ def build_tools() -> List[Dict[str, Any]]:
         {
             "type": "function",
             "function": {
-                "name": "crm.export_all",
+                "name": llm_tool_name("crm.export_all"),
                 "description": "导出全部客户资料（高危操作，网关策略默认拒绝）。",
                 "parameters": {
                     "type": "object",
@@ -233,7 +255,7 @@ def run_llm_task(task_id: int, goal: str, *, base_url: Optional[str] = None,
                 "step": step,
                 "finish_reason": finish_reason,
                 "tool_calls": [
-                    {"id": tc.id, "tool": tc.function.name,
+                    {"id": tc.id, "tool": gateway_tool_name(tc.function.name),
                      "params": (tc.function.arguments or "{}")[:500]}
                     for tc in calls
                 ],
@@ -244,7 +266,7 @@ def run_llm_task(task_id: int, goal: str, *, base_url: Optional[str] = None,
 
             if calls:
                 for tc in calls:
-                    tool_name = tc.function.name
+                    tool_name = gateway_tool_name(tc.function.name)
                     try:
                         params = json.loads(tc.function.arguments or "{}")
                     except (json.JSONDecodeError, TypeError):

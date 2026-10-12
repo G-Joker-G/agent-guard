@@ -29,9 +29,9 @@ TERMINAL = {"executed", "failed", "denied", "rejected", "blocked_by_stop"}
 
 
 def _no_proxy_client_factory(**kwargs):
-    """httpx client 工厂：绕过环境代理变量。
+    """httpx2 client 工厂：绕过环境代理变量。
 
-    某些云电脑的代理环境变量会导致 httpx2 构造 Client 时 URL 解析异常；
+    某些云电脑的代理环境变量会导致构造 Client 时 URL 解析异常；
     示例直连本地后端，不需要代理。用户在自己机器上一般不受影响。
     """
     kwargs.setdefault("trust_env", False)
@@ -65,9 +65,9 @@ async def main(base: str):
             print("✓ 自动放行并执行成功")
 
             # 3. 审批路径：mail_send（阻塞在网关 wait 模式下等待人工决策）
-            print("\n== 调用 mail_send（将阻塞等待人工审批） ==")
+            print("\n== 调用 mail_send（将阻塞等待人工审批，最长 300 秒） ==")
             print("   → 请现在打开 Web 控制台「审批中心」，找到来自 MCP 的 mail.send 审批单并 批准/拒绝")
-            print("   → 本脚本会在后台轮询 guard_check_status 直到终态")
+            print(f"   → 审批单出现后约 1 秒内本脚本会自动继续（action_id 将在返回后打印）")
             mail_res = await session.call_tool("mail_send", {
                 "customer_id": 1,
                 "subject": "MCP 演示邮件",
@@ -77,6 +77,16 @@ async def main(base: str):
             mail_payload = json.loads(mail_res.content[0].text)
             action_id = mail_payload["action_id"]
             print(f"   网关返回：status={mail_payload['status']} error={mail_payload['error']}")
+            print()
+            print("=" * 64)
+            if mail_payload["status"] == "executed":
+                print("  [第3步结论] mail_send 经人工批准 → 已执行（发件箱已落库）")
+            elif mail_payload["status"] == "rejected":
+                print("  [第3步结论] mail_send 被人工拒绝 → 未执行（符合预期）")
+            else:
+                print(f"  [第3步结论] mail_send 终态异常：status={mail_payload['status']} "
+                      f"error={mail_payload['error']}")
+            print("=" * 64)
 
             # 4. 用 guard_check_status 轮询到终态
             print("\n== 轮询 guard_check_status ==")
@@ -92,7 +102,12 @@ async def main(base: str):
                 sys.exit(1)
             print(f"✓ mail_send 终态：{info['status']}")
 
-            # 5. deny 路径：crm_export_all
+            # 5. deny 路径：crm_export_all（独立测试，与上面的审批无关）
+            print()
+            print("=" * 64)
+            print("  下面是独立的第 5 步：越权导出测试（预期被策略拒绝）")
+            print("  注意：这里的拒绝是网关策略 deny，和第 3 步的人工审批决定无关")
+            print("=" * 64)
             print("\n== 调用 crm_export_all() ==")
             exp_res = await session.call_tool("crm_export_all", {})
             exp_payload = json.loads(exp_res.content[0].text)

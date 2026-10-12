@@ -80,7 +80,7 @@ class AdminIn(BaseModel):
 class HealthOut(BaseModel):
     ok: bool = True
     simulation_mode: bool = True
-    version: str = "0.1.0"
+    version: str = "0.2.0"
 
 
 class StopStatusOut(BaseModel):

@@ -30,7 +30,12 @@ command -v npm >/dev/null || { echo "缺 npm"; exit 1; }
 # ---- 后端 ----
 if [ ! -d backend/venv ]; then
   echo "-- 创建后端虚拟环境 --"
-  python3 -m venv backend/venv
+  if ! python3 -m venv backend/venv 2>backend/venv-error.log; then
+    echo "虚拟环境创建失败。macOS 自带的 python3 常缺少 pip/ensurepip，"
+    echo "请从 python.org 安装 Python 3.10+（或 brew install python），"
+    echo "然后删掉 backend/venv 再重试。详细错误见 backend/venv-error.log"
+    exit 1
+  fi
 fi
 echo "-- 安装后端依赖 --"
 backend/venv/bin/pip install -q -r backend/requirements.txt
@@ -55,7 +60,9 @@ if [ ! -d frontend/node_modules ]; then
   (cd frontend && npm install)
 fi
 echo "-- 启动前端 (http://localhost:${FRONTEND_PORT}) --"
-nohup bash -c "cd frontend && PORT=${FRONTEND_PORT} npx vite --port ${FRONTEND_PORT} --strictPort" \
+# exec 让 bash 直接变成 vite 进程，这样 PID 文件里记的是真实进程，
+# stop-mac.sh 按 PID 杀时才能真正停掉前端（否则会留下孤儿进程占端口）。
+nohup bash -c "cd frontend && exec env PORT=${FRONTEND_PORT} npx vite --port ${FRONTEND_PORT} --strictPort" \
   > frontend/frontend.log 2>&1 &
 echo $! >> "$PID_FILE"
 

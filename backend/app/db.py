@@ -41,6 +41,9 @@ def init_db() -> None:
     from .seed import seed_customers
     from sqlalchemy import inspect, text
 
+    # 新鲜 clone 没有 backend/data/ 目录时，sqlite 会报
+    # "unable to open database file"；这里保证父目录存在。
+    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(engine)
     # 轻量迁移：老库的 actions 表补 origin 列
     with engine.begin() as conn:

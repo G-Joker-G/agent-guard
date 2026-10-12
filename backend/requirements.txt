@@ -4,5 +4,6 @@ sqlalchemy
 pydantic
 pytest
 httpx
+httpx2
 mcp
 openai

@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+/* 类名驱动的深色模式（.dark），默认浅色 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --radius-lg: 0.625rem;
+  --radius-md: 0.4375rem;
+  --radius-sm: 0.25rem;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* 语义色（徽章 / 状态）：浅色下用 600 系保证对比度，深色下沿用原值 */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+}
+
+/* ============ 浅色清爽主题（默认） ============ */
+:root {
+  --background: #f7f8fa;
+  --foreground: #1b1e23;
+  --card: #ffffff;
+  --card-foreground: #1b1e23;
+  --popover: #ffffff;
+  --popover-foreground: #1b1e23;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #eef0f3;
+  --secondary-foreground: #3f454e;
+  --muted: #eef0f3;
+  --muted-foreground: #6b7280;
+  --accent: #e8eefc;
+  --accent-foreground: #1d4ed8;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e7e9ed;
+  --input: #dcdfe4;
+  --ring: #2563eb;
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+  --info: #0284c7;
+  --info-foreground: #ffffff;
+  color-scheme: light;
+}
+
+/* ============ 深色主题（保留切换入口，干净不闷） ============ */
+.dark {
+  --background: #0b0e14;
+  --foreground: #e8edf3;
+  --card: #11151d;
+  --card-foreground: #e8edf3;
+  --popover: #161b25;
+  --popover-foreground: #e8edf3;
+  --primary: #4c8dff;
+  --primary-foreground: #ffffff;
+  --secondary: #1c2330;
+  --secondary-foreground: #c7d2e3;
+  --muted: #161c26;
+  --muted-foreground: #8b98ad;
+  --accent: #1c2330;
+  --accent-foreground: #e8edf3;
+  --destructive: #f0524d;
+  --destructive-foreground: #ffffff;
+  --border: #232c3b;
+  --input: #232c3b;
+  --ring: #4c8dff;
+  --success: #34c98e;
+  --success-foreground: #06281c;
+  --warning: #f5a524;
+  --warning-foreground: #3a2703;
+  --info: #38bdf8;
+  --info-foreground: #06283a;
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+}
+
+/* 滚动条：浅色细灰，深色沿用 */
+@layer base {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cdd2d9;
+    border-radius: 8px;
+    border: 2px solid var(--background);
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #2a3444;
+  }
+}
+
+/* 命令面板动画 */
+@keyframes cmdk-in {
+  from { opacity: 0; transform: scale(0.98) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.cmdk-panel {
+  animation: cmdk-in 120ms ease-out;
+}
+
+/* 数据型数字等宽对齐 */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 审计详情折叠 */
+.audit-detail summary {
+  cursor: pointer;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  user-select: none;
+}
+.audit-detail summary:hover {
+  color: var(--foreground);
+}
+.audit-detail pre {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f1f3f5;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #3f454e;
+}
+.dark .audit-detail pre {
+  background: #0a0e15;
+  color: #9fb3cc;
+}
+
+/* 网关裁决流水线 */
+.pipeline-seg {
+  position: relative;
+}
+.pipeline-seg:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  width: 18px;
+  height: 1px;
+  background: var(--border);
+  transform: translateY(-50%);
+}

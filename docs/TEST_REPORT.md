@@ -2,6 +2,47 @@
 
 测试环境：云电脑 Ubuntu，Python 3.12.3，Node 24.20.0。测试日期 2026-10-11（V1）/ V2 同日。
 
+## 2026-10-13 本地加固（未推送远端）
+
+详见 [CHANGELOG_LOCAL.md](CHANGELOG_LOCAL.md)。本轮新增 21 项测试，全部零真实外部调用。
+
+### 0. 全量回归
+
+命令：`cd backend && venv/bin/python -m pytest tests/ -q`
+
+结果：**44 passed**（V1 11 + V2 12 + 成本熔断 7 + 安全加固 14），连续 3 轮全绿。
+
+新增测试文件：
+- `tests/test_v2_budget.py`（7 项）：kill switch（路由/直接调用）、额度用尽零网络拦截、
+  stub 不计费、`LLM_MAX_STEPS` 生效、非法 env 回退、`status` 含额度且不泄 key。
+- `tests/test_v2_hardening.py`（14 项）：并发双执行单次生效、并发双批单胜者、
+  篡改 params 批准后执行被拒、8 线程审计写链完整、非法输入类型、admin token 开关、
+  审批过期、wait 中途急停、急停任务 stopped、agent.goal 审计、max_steps 耗尽、
+  run_llm_task 无 key 直接调用、原子认领单测。
+
+### 1. 并发专项（本轮实测发现并修复的真问题）
+
+- 修 P1-1/P1-3 时发现：SQLite 的 SHARED→RESERVED **锁升级不吃 busy 超时**，
+  先 SELECT 再 UPDATE 的并发写会立即报 `database is locked`（500）。
+  已改事务 `BEGIN IMMEDIATE`（写锁在事务开始时一次拿到）；独立复现脚本 10/10 干净。
+- 修 P1-4 时发现：进程锁 + SQLite 写锁会形成**锁序死锁**（execute 路径 DB 写→审计锁；
+  append 路径审计锁→DB 写），已实测复现；改用 `prev_hash` 唯一约束 + savepoint 重试
+  （乐观并发，不引入新锁）。
+- `init_db` 迁移曾因 `inspect(engine)` 在外层事务内拿第二个连接而单线程自死锁，
+  已改为 `inspect(conn)`。
+
+### 2. 未验证项（诚实记录，2026-10-13）
+
+- **真实 LLM + 真实 key 的端到端**：留待 Mac 验收（用户自行在 `.env` 填 key 后跑场景 A）；
+  熔断逻辑已用 stub + 单测覆盖。
+- **Docker Compose 未实测**：开发环境无 Docker。
+- **start-mac.sh 未在 macOS 实测**。
+- **前端未做真人点击联调**：ErrorBoundary 错误卡片、管理口令输入框未做真人点击验证；
+  构建通过。
+- **`/api/events` SSE 长连接**：无自动化测试（冒烟验证通过）。
+- **同一 task 并发 `run-llm`**：无测试、无互斥设计——已知限制。
+- **P1-6 的 401 路径前端展示**：未做真人点击验证。
+
 ## V2 新增（2026-10-11）
 
 ### 0. 全量回归
@@ -93,7 +134,8 @@
 
 命令：`cd frontend && npm run build` → 通过（vite v6.4.4，35 modules）。
 
-前后端接口契约交叉检查：前端调用的全部 `/api/*` 路径均对应后端已实现的路由（脚本比对，无遗漏）。
+前后端接口契约交叉检查（路径级）：前端调用的全部 `/api/*` 路径均对应后端已实现的路由（脚本比对，无遗漏）。
+> 口径说明：以上仅为路径级比对，未覆盖字段级契约。2026-10-13 前端审计发现两例字段级不一致（发件箱 `to_email` 误写 `to`；任务状态枚举缺 `planned/in_progress/failed`），已修复。
 
 ## 4. 未验证项（诚实记录）
 

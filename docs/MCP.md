@@ -44,7 +44,7 @@ Agent Guard 通过官方 `mcp` SDK（2.x）把受保护工具暴露为 MCP 工�
 ./start-mac.sh
 # 或：cd backend && venv/bin/python -m uvicorn app.main:app --port 8000
 
-# 2. 打开 Web 控制台（用于审批）：http://127.0.0.1:8000
+# 2. 打开 Web 控制台（用于审批）：前端 dev 地址 http://127.0.0.1:5173（或 Docker 下的 http://127.0.0.1:3000）
 
 # 3. 运行演示客户端（backend/venv 需装 mcp 包）
 cd backend && venv/bin/python ../examples/mcp_client_demo.py --base http://127.0.0.1:8000

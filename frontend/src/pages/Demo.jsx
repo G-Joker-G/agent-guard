@@ -1,11 +1,14 @@
 import { useState } from 'react'
+import { Play, Zap, OctagonX, CheckCircle2, AlertTriangle, RotateCcw } from 'lucide-react'
 import { api, apiErrorMessage } from '../api'
-import { ActionBadge, ErrorBox } from '../components'
-import { paramsSummary } from '../labels'
+import { PageHeader, EmptyState } from '../components/layout'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-export function DemoPage() {
+export function DemoPage({ onReset, busy: resetBusy }) {
   const [steps, setSteps] = useState([])
   const [running, setRunning] = useState(false)
   const [activeDemo, setActiveDemo] = useState('')
@@ -144,7 +147,7 @@ export function DemoPage() {
         () => 'emergency_stop=0，审计 stop.released。只有显式 resume 能恢复，advance 不会自动恢复。')
       say('✅ 路径 C 完成', '—', '急停 → 拦截新动作/执行 → 显式恢复，全链路验证完毕', '演示成功')
     } else {
-      say('⏸ 路径 C 暂停', '—', '急停仍保持生效，可在顶栏点击「恢复」解除（需二次确认）')
+      say('⏸ 路径 C 暂停', '—', '急停仍保持生效，可在顶栏点击「解除急停」解除（需二次确认）')
     }
   }
 
@@ -163,44 +166,94 @@ export function DemoPage() {
     }
   }
 
+  const demos = [
+    {
+      key: 'A', title: '路径 A · 正常审批流', icon: Play, variant: 'default',
+      desc: 'mail.send 走完「提议 → 策略评估需审批 → 人工批准 → 绑定执行 → 真实落库」全链路。',
+      fn: demoA,
+    },
+    {
+      key: 'B', title: '路径 B · 越权拦截', icon: Zap, variant: 'destructive',
+      desc: '注入诱导的 crm.export_all 被网关策略拒绝，并验证拒绝的动作无法执行。',
+      fn: demoB,
+    },
+    {
+      key: 'C', title: '路径 C · 急停流程', icon: OctagonX, variant: 'destructive',
+      desc: '急停 → 拦截新动作与执行 → 显式恢复，全链路验证。',
+      fn: demoC,
+    },
+  ]
+
   return (
     <div>
-      <div className="panel">
-        <h2>演示路径 · 一键跑通</h2>
-        <p className="muted">每一步都会显示调用的接口、请求与返回判定——所有判定均由后端作出，前端只负责展示。</p>
-        <div className="demo-btns">
-          <button className="btn primary" disabled={running} onClick={() => runDemo('A', demoA)}>
-            路径 A · 正常审批流
-          </button>
-          <button className="btn primary" disabled={running} onClick={() => runDemo('B', demoB)}>
-            路径 B · 越权拦截
-          </button>
-          <button className="btn danger" disabled={running} onClick={() => runDemo('C', demoC)}>
-            路径 C · 急停流程
-          </button>
-        </div>
-        <ErrorBox error={''} />
+      <PageHeader
+        title="演示"
+        desc="一键跑通三条演示路径。每一步显示调用的接口与返回判定——所有判定均由后端作出，前端只负责展示。"
+      />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {demos.map((d) => (
+          <Card key={d.key} className={activeDemo === d.key && running ? 'border-primary/60' : ''}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <d.icon size={16} /> {d.title}
+              </CardTitle>
+              <CardDescription>{d.desc}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant={d.variant} disabled={running} onClick={() => runDemo(d.key, d.fn)} className="w-full">
+                {running && activeDemo === d.key ? '运行中…' : `运行路径 ${d.key}`}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {steps.length > 0 && (
-        <div className="panel">
-          <h2>执行步骤 {activeDemo && `（路径 ${activeDemo}）`} {running && <span className="muted">· 运行中…</span>}</h2>
-          <div className="step-log">
-            {steps.map((s, i) => (
-              <div className="step" key={i}>
-                <div className="s-title">{s.title}</div>
-                <div className="s-api">{s.api}</div>
-                <div className="s-resp">{s.resp}</div>
-                {s.decision && (
-                  <div className="s-decision">
-                    <ActionBadge status={s.decision} /> <span className="muted">{s.decision}</span>
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              执行步骤 {activeDemo && `(路径 ${activeDemo})`}
+              {running && <Badge variant="info">运行中…</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ol className="space-y-3">
+              {steps.map((s, i) => (
+                <li key={i} className="rounded-lg border border-border bg-muted/20 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">{s.title}</span>
+                    {s.decision && (
+                      <Badge variant={s.decision === '调用失败' ? 'destructive' : 'success'} className="gap-1">
+                        {s.decision === '调用失败' ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} />}
+                        {s.decision}
+                      </Badge>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+                  <div className="mt-1 font-mono text-xs text-muted-foreground">{s.api}</div>
+                  <pre className="mt-2 whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-foreground/90">
+                    {s.resp}
+                  </pre>
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
       )}
+
+      <Card className="mt-4 border-destructive/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><RotateCcw size={16} /> 演示辅助</CardTitle>
+          <CardDescription>
+            调用 POST /api/admin/reset：清空任务/动作/审批/审计/发件箱，重建种子客户数据，解除急停。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="destructive" disabled={resetBusy} onClick={onReset}>
+            一键重置演示数据
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }

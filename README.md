@@ -68,6 +68,9 @@ cp .env.example .env   # 然后填入
 ```
 
 - `LLM_API_KEY` 为空时：真实 LLM 入口返回 409，前端显示"未配置"，演示 Agent 模式照常可用。
+- **成本熔断**（默认保守，无需 key 也生效）：`LLM_KILL_SWITCH=1` 一键禁用真实 LLM 入口；
+  `LLM_DAILY_MAX_CALLS=50` 限制每天真实 API 调用次数（本地 stub 不计费、不计入）；
+  `LLM_MAX_STEPS=12` 限制单轮步数。额度在「实时运行」页的 LLM 状态行可见。
 - 开发期**零真实外部调用**：Agent 循环用本地 stub（`scripts/stub_llm_server.py`）验证。
 - 详见 [docs/LLM.md](docs/LLM.md)。建议在模型服务商侧设置消费限额/告警。
 
@@ -114,12 +117,15 @@ agent-guard/
   frontend/src/pages/Live.jsx   实时运行视图（SSE）
   scripts/stub_llm_server.py    本地 OpenAI-compatible 桩（开发测试用）
   examples/mcp_client_demo.py   MCP 示例客户端
-  docs/  MCP.md  LLM.md  DEMO_V2.md  ARCHITECTURE_V2.md  TEST_REPORT.md
+  docs/  MCP.md  LLM.md  DEMO_V2.md  DEMO.md（V1 旧版，已被 DEMO_V2.md 取代） ARCHITECTURE_V2.md  TEST_REPORT.md  DEV_SUMMARY.md  PITCH_FRAMING.md  SUBMISSION_ROADMAP.md
 ```
 
 ## 已知限制
 
 - 开发期未使用真实 LLM key：真实模型端到端验证留待 Mac 验收（用户自行配置 key 后跑场景 A）。
+- 管理/审批接口鉴权：默认无鉴权（本机演示，绑定 127.0.0.1）；如需暴露到局域网/公网，
+  在 `.env` 设置 `GUARD_ADMIN_TOKEN`，管理与审批决议接口即要求 `X-Admin-Token` 请求头
+  （前端顶栏"管理口令"输入框填入后自动携带）。
 - Docker Compose 未在开发环境实测（环境无 Docker）；`start-mac.sh` 未在 macOS 实测。
 - 前端未做真人点击联调（构建通过、接口契约检查通过）。
 - 审计哈希链仅"可检测篡改"；单机演示，无多租户/复杂身份体系。

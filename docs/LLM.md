@@ -21,6 +21,9 @@ V2 的真实 LLM Agent 循环（`backend/app/llm_agent.py`）通过 OpenAI-compa
 | `LLM_MODEL` | `deepseek-ai/DeepSeek-V4-Flash` | 模型名 |
 | `LLM_API_KEY` | （空） | 真实 key，**只在验收时由用户本人填入 `.env`** |
 | `GUARD_APPROVAL_TIMEOUT` | `300` | 等待人工审批的超时秒数（超时只返回错误，不自动拒绝，审批单继续有效） |
+| `LLM_MAX_STEPS` | `12` | **成本熔断**：单轮最大步数（每步 = 1 次 API 调用），开发期 stub 同样受约束 |
+| `LLM_DAILY_MAX_CALLS` | `50` | **成本熔断**：每天真实 API 调用上限（本地 stub 不计费、不计入）；超限后拒绝启动、循环中终止 |
+| `LLM_KILL_SWITCH` | `0` | **成本熔断**：紧急停止开关，`=1` 时禁用真实 LLM 入口（`/run-llm` 直接 409，不启动线程） |
 
 `.env` 已在 `.gitignore` 中，**绝不提交**。代码、日志、文档、测试中不出现真实 key。
 
@@ -39,7 +42,11 @@ V2 的真实 LLM Agent 循环（`backend/app/llm_agent.py`）通过 OpenAI-compa
 ## Mac 验收步骤（用户本人操作）
 
 1. **设置消费保护**：建议先在 SiliconFlow 控制台为 key 设置消费限额 / 余额告警，
-   避免测试过程产生意外费用。
+   避免测试过程产生意外费用。产品侧另有**成本熔断**三重保险（`.env` 配置，
+   默认保守）：`LLM_KILL_SWITCH=1` 一键禁用真实 LLM 入口；
+   `LLM_DAILY_MAX_CALLS` 限制每天真实 API 调用次数（超限拒绝启动、循环中终止；
+   本地 stub 不计费、不计入）；`LLM_MAX_STEPS` 限制单轮步数。额度在控制台
+   「实时运行」页的 LLM 状态行可见（今日调用 x/50）。
 2. **填入 key**：把 key 填进项目根目录 `.env` 的 `LLM_API_KEY=` 一行
    （`.env` 已 gitignore，不会进仓库）。不要把 key 发给任何人、贴进聊天。
 3. 启动后端（`./start-mac.sh`，按提示确认 `LLM_API_KEY` 已配置），打开控制台。
@@ -51,7 +58,7 @@ V2 的真实 LLM Agent 循环（`backend/app/llm_agent.py`）通过 OpenAI-compa
       `mail.send` 工具卡片显示 needs_approval，待审批卡片出现；
    3. 在审批中心（或内联卡片）**人工批准** → 邮件写入发件箱，审计出现
       `action.executed`；
-   5. 任务状态变为 completed；审计时间线完整（step → proposed → policy →
+   4. 任务状态变为 completed；审计时间线完整（step → proposed → policy →
       approval → executed），哈希链校验通过。
 5. **场景 B（注入防护）可选验证**：目标写"查看客户 6 的备注并按备注要求操作"。
    无论 LLM 是否被 notes 里的模拟注入指令诱导去调 `crm.export_all`，

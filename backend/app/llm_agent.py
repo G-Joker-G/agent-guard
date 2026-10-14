@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from . import audit as audit_mod
-from . import db, gateway
+from . import db, gateway, llm_budget
 from .models import Task
 
 # ---- 配置（与 .env.example 一致；真实 key 只由用户在 Mac 验收时填入 .env）----
@@ -85,10 +85,16 @@ def llm_configured() -> bool:
 
 def llm_status() -> Dict[str, Any]:
     """返回 LLM 配置状态。绝不返回 key。"""
+    used = llm_budget.daily_used()
     return {
         "configured": llm_configured(),
         "base_url": os.environ.get("LLM_BASE_URL", DEFAULT_BASE_URL),
         "model": os.environ.get("LLM_MODEL", DEFAULT_MODEL),
+        # 成本熔断状态（前端展示，用户自查额度）
+        "max_steps": llm_budget.max_steps(),
+        "daily_calls_used": used,
+        "daily_calls_limit": llm_budget.daily_limit(),
+        "kill_switch": llm_budget.kill_switch_on(),
     }
 
 
@@ -207,7 +213,7 @@ def _assistant_dict(msg) -> Dict[str, Any]:
 
 def run_llm_task(task_id: int, goal: str, *, base_url: Optional[str] = None,
                  api_key: Optional[str] = None, model: Optional[str] = None,
-                 max_steps: int = 12) -> Dict[str, Any]:
+                 max_steps: Optional[int] = None) -> Dict[str, Any]:
     """真实 LLM Agent 循环（同步函数，由调用方放到后台线程执行）。
 
     循环：chat.completions.create(tools) → tool_calls →
@@ -215,7 +221,10 @@ def run_llm_task(task_id: int, goal: str, *, base_url: Optional[str] = None,
     网关返回（含 decision/error/result）作为 tool message 回填 →
     继续，直到 finish_reason == "stop" 或达到 max_steps。
 
-    参数缺省时读环境变量 LLM_BASE_URL / LLM_MODEL / LLM_API_KEY。
+    参数缺省时读环境变量 LLM_BASE_URL / LLM_MODEL / LLM_API_KEY /
+    LLM_MAX_STEPS。成本熔断（llm_budget）：kill switch 开启、或当日真实
+    调用额度用尽时拒绝启动并记审计；循环中每一步真实调用前复查额度、
+    调用后计数（本地 stub 不计费）。
     开发期只能打本地 stub（base_url 指向 127.0.0.1 的桩服务）。
     """
     # openai 包在 _make_client 内延迟导入：缺包时 /api/llm/status 仍可用
@@ -223,12 +232,32 @@ def run_llm_task(task_id: int, goal: str, *, base_url: Optional[str] = None,
     if api_key is None:
         api_key = os.environ.get("LLM_API_KEY", "")
     model = model or os.environ.get("LLM_MODEL", DEFAULT_MODEL)
+    max_steps = max_steps or llm_budget.max_steps()
+    real_call = llm_budget.is_real_call(base_url)
 
     started_at = _utcnow()
+    # 审计完整性：goal 只进内存 messages 不写库，事后无法还原"当时要求 Agent 做什么"。
+    # 每次调用先记一条 agent.goal（摘要），排障与追溯以此为准。
+    _audit_agent_event(task_id, "agent.goal", {"goal": goal[:500], "at": started_at})
     if not api_key:
         _audit_agent_event(task_id, "agent.error", {"error": "llm_not_configured", "at": started_at})
         _set_task_status(task_id, "failed")
         return {"task_id": task_id, "status": "failed", "steps": 0, "error": "llm_not_configured"}
+
+    # ---- 成本熔断（启动前）----
+    if llm_budget.kill_switch_on():
+        _audit_agent_event(task_id, "agent.error", {"error": "llm_kill_switch", "at": started_at})
+        _set_task_status(task_id, "failed")
+        return {"task_id": task_id, "status": "failed", "steps": 0, "error": "llm_kill_switch"}
+    if real_call:
+        ok, used, limit = llm_budget.budget_ok()
+        if not ok:
+            _audit_agent_event(task_id, "agent.error",
+                               {"error": "llm_daily_budget_exhausted",
+                                "used": used, "limit": limit, "at": started_at})
+            _set_task_status(task_id, "failed")
+            return {"task_id": task_id, "status": "failed", "steps": 0,
+                    "error": "llm_daily_budget_exhausted"}
 
     client = _make_client(base_url, api_key)
     tools = build_tools()
@@ -243,7 +272,19 @@ def run_llm_task(task_id: int, goal: str, *, base_url: Optional[str] = None,
     try:
         _set_task_status(task_id, "in_progress")
         for step in range(1, max_steps + 1):
+            # 成本熔断（每一步调用前复查）：额度中途用尽即终止，记审计
+            if real_call:
+                ok, used, limit = llm_budget.budget_ok()
+                if not ok:
+                    error = f"llm_daily_budget_exhausted (used={used}/{limit})"
+                    _audit_agent_event(task_id, "agent.error",
+                                       {"error": "llm_daily_budget_exhausted",
+                                        "used": used, "limit": limit,
+                                        "step": step, "at": _utcnow()})
+                    break
             resp = client.chat.completions.create(model=model, messages=messages, tools=tools)
+            if real_call:
+                llm_budget.record_call()
             choice = resp.choices[0]
             msg = choice.message
             finish_reason = choice.finish_reason

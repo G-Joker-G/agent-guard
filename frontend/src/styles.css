@@ -138,17 +138,20 @@ table.tbl tr:hover td { background: rgba(76, 141, 255, 0.06); }
 
 /* —— 时间线 —— */
 .timeline { list-style: none; margin: 0; padding: 0; }
-.timeline li {
+.timeline li, .timeline .t-item {
   padding: 10px 0 10px 18px; border-left: 2px solid var(--border);
   margin-left: 6px; position: relative;
 }
-.timeline li::before {
+.timeline li::before, .timeline .t-item::before {
   content: ""; position: absolute; left: -6px; top: 16px;
   width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
 }
 .timeline .t-time { color: var(--muted); font-size: 12px; }
 .timeline .t-event { font-weight: 700; }
 .timeline .t-detail { color: var(--muted); font-size: 13px; word-break: break-all; }
+
+/* 表格长文本换行（动作参数摘要等长字段不撑开布局） */
+.tbl td { word-break: break-word; }
 
 /* —— 演示步骤 —— */
 .step-log { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }

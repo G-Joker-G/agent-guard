@@ -8,10 +8,13 @@ export const SCENARIO_LABEL = {
 
 export const TASK_STATUS = {
   created: { label: '已创建', cls: 'st-created' },
+  planned: { label: '已规划', cls: 'st-created' },
+  in_progress: { label: '进行中', cls: 'st-running' },
   running: { label: '运行中', cls: 'st-running' },
   pending_approval: { label: '等待审批', cls: 'st-waiting' },
   completed: { label: '已完成', cls: 'st-done' },
   done: { label: '已完成', cls: 'st-done' },
+  failed: { label: '执行失败', cls: 'st-failed' },
   rejected: { label: '已拒绝', cls: 'st-rejected' },
   stopped: { label: '已急停', cls: 'st-stopped' },
 }

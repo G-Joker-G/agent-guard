@@ -24,6 +24,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
+from sqlalchemy.exc import IntegrityError
+
 from . import audit as audit_mod
 from . import db, executor, policy
 from .models import Action, Approval, SystemState, Task
@@ -101,7 +103,12 @@ def propose_action(session, *, task_id: int, tool: str, params: Dict[str, Any],
 
 
 def ensure_pending_approval(session, action: Action) -> Approval:
-    """为 needs_approval 的 action 确保有一张 pending 审批单（幂等）。调用方负责 commit。"""
+    """为 needs_approval 的 action 确保有一张 pending 审批单（幂等）。调用方负责 commit。
+
+    并发下两个调用可能同时通过"无 pending"检查：部分唯一索引
+    uq_approval_pending_per_action 会拒绝第二个 INSERT，此时回滚本函数未提交的
+    写入并重查，返回已存在的那张（幂等语义不变）。
+    """
     existing = (
         session.query(Approval)
         .filter(Approval.action_id == action.id, Approval.status == "pending")
@@ -117,7 +124,19 @@ def ensure_pending_approval(session, action: Action) -> Approval:
         created_at=_utcnow(),
     )
     session.add(ap)
-    session.flush()
+    try:
+        session.flush()
+    except IntegrityError:
+        # 并发插入冲突：只回滚本函数的写入（调用方此前的提交不受影响），重查返回
+        session.rollback()
+        existing = (
+            session.query(Approval)
+            .filter(Approval.action_id == action.id, Approval.status == "pending")
+            .first()
+        )
+        if existing is not None:
+            return existing
+        raise
     _log(session, action.task_id, action.id, "approval.created", "gateway",
          {"tool": action.tool, "risk": action.risk, "reason": action.decision_reason,
           "origin": getattr(action, "origin", "web")})
@@ -239,7 +258,9 @@ def adjudicate(session, action: Action, *, mode: str = "execute",
             _log(session, action.task_id, action.id, "action.blocked_stop", "gateway",
                  {"tool": action.tool})
             return _result(action, error="emergency_stop", approval_id=approval.id)
-        return _run_executor(session, action, fail_mode="keep")
+        res = _run_executor(session, action, fail_mode="keep")
+        res["approval_id"] = approval.id  # 关联"哪张审批单放行了这次执行"
+        return res
 
     if verdict == "rejected":
         session.refresh(action)  # decide 接口已置 rejected
@@ -281,6 +302,14 @@ def run_protected_tool(*, tool: str, params: Dict[str, Any], origin: str,
         res = adjudicate(session, action, mode="wait", approval_timeout=approval_timeout)
         session.commit()
         res["task_id"] = task.id
+        # MCP/LLM 创建的任务此前永远停在 created：按动作终态同步任务状态，
+        # 与 REST 路径的看板语义一致
+        session.refresh(action)
+        if action.status == "executed":
+            task.status = "completed"
+        elif action.status in TERMINAL_STATUSES:
+            task.status = "failed"
+        session.commit()
         return res
     finally:
         session.close()

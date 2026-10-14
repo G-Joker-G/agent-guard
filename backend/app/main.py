@@ -13,13 +13,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from sqlalchemy import update as sa_update
 
 from . import audit as audit_mod
 from . import db, demo_agent, executor, gateway, policy
@@ -96,6 +98,21 @@ def _log(session, task_id, action_id, event, actor="", detail=""):
     )
 
 
+def _require_admin_token(request: Request) -> None:
+    """管理口令校验（可选开关）。
+
+    只有当环境变量 GUARD_ADMIN_TOKEN 非空时才强制：管理接口
+    （/api/admin/stop|resume|reset）与审批决议（/api/approvals/{id}/decide）
+    要求请求头 X-Admin-Token 匹配，否则 401。
+    未设置时保持现状——本机演示零负担（口径见 README 已知限制）。
+    """
+    expected = os.environ.get("GUARD_ADMIN_TOKEN", "").strip()
+    if not expected:
+        return
+    if request.headers.get("X-Admin-Token", "") != expected:
+        raise HTTPException(status_code=401, detail="admin_token_required")
+
+
 def _recompute_task_status(session, task: Task) -> None:
     statuses = {a.status for a in session.query(Action).filter(Action.task_id == task.id)}
     if not statuses:
@@ -111,7 +128,9 @@ def _recompute_task_status(session, task: Task) -> None:
     elif statuses & {"proposed", "approved"}:
         task.status = "in_progress"
     elif statuses <= TERMINAL_STATUSES:
-        task.status = "completed"
+        # blocked_by_stop 是终态但不是"完成"：急停冻结的任务显示"已急停"，
+        # 避免看板上把被冻结的任务误标为已完成
+        task.status = "stopped" if "blocked_by_stop" in statuses else "completed"
 
 
 def _advance_task(session, task: Task) -> None:
@@ -298,23 +317,39 @@ def create_approval(body: ApprovalCreate, session=Depends(db.get_session)):
 
 
 @app.post("/api/approvals/{approval_id}/decide", response_model=ApprovalOut)
-def decide_approval(approval_id: int, body: DecideIn, session=Depends(db.get_session)):
-    ap = session.get(Approval, approval_id)
-    if not ap:
-        raise HTTPException(404, "approval not found")
-    if ap.status != "pending":
+def decide_approval(approval_id: int, body: DecideIn, request: Request,
+                    session=Depends(db.get_session)):
+    _require_admin_token(request)
+    # 并发双批防护：先原子认领 pending 审批单（UPDATE ... WHERE status='pending'）。
+    # 两个同时的批准请求只有一个能认领成功，另一个得 409；否则 last-write-wins
+    # 会产生多条 approval.approved 审计事件并可能覆盖 approver/note。
+    claimed = session.execute(
+        sa_update(Approval)
+        .where(Approval.id == approval_id, Approval.status == "pending")
+        .values(status="__claimed__")
+    ).rowcount
+    session.flush()
+    if not claimed:
+        ap = session.get(Approval, approval_id)
+        if ap is None:
+            raise HTTPException(404, "approval not found")
         raise HTTPException(409, "approval already decided")
+    ap = session.get(Approval, approval_id)
     action = session.get(Action, ap.action_id)
     if not action or action.status != "needs_approval":
+        # 回滚认领：动作已不在待审批态，本次决议无效
+        ap.status = "pending"
+        session.commit()
         raise HTTPException(409, "action is not awaiting approval")
 
-    params = json.loads(action.params or "{}")
     if body.decision == "approve":
         ap.status = "approved"
         ap.approver = body.approver
         ap.note = body.note
-        # 审批绑定：scope_hash + 参数 + 有效期（30 分钟），一次一用
-        ap.scope_hash = policy.request_hash(action.tool, params)
+        # 审批绑定沿用创建时的 scope_hash（ensure_pending_approval 按当时 params 算好）。
+        # 批准时不再重算：重算会把"创建后、批准前被篡改过的 params"重新合法化，
+        # 架空网关的 scope 校验。篡改过的 params 会在执行器复查时被拒绝
+        # （approval_scope_mismatch）。
         ap.expires_at = (datetime.now(timezone.utc) + APPROVAL_TTL).isoformat(timespec="seconds")
         ap.decided_at = _utcnow()
         action.status = "approved"
@@ -335,7 +370,8 @@ def decide_approval(approval_id: int, body: DecideIn, session=Depends(db.get_ses
 # ---------- 急停 ----------
 
 @app.post("/api/admin/stop", response_model=StopResultOut)
-def admin_stop(body: AdminIn, session=Depends(db.get_session)):
+def admin_stop(body: AdminIn, request: Request, session=Depends(db.get_session)):
+    _require_admin_token(request)
     row = session.get(SystemState, "emergency_stop")
     if row is None:
         row = SystemState(key="emergency_stop", value="0")
@@ -352,7 +388,8 @@ def admin_stop(body: AdminIn, session=Depends(db.get_session)):
 
 
 @app.post("/api/admin/resume", response_model=StopStatusOut)
-def admin_resume(body: AdminIn, session=Depends(db.get_session)):
+def admin_resume(body: AdminIn, request: Request, session=Depends(db.get_session)):
+    _require_admin_token(request)
     row = session.get(SystemState, "emergency_stop")
     if row is None:
         row = SystemState(key="emergency_stop", value="0")
@@ -364,7 +401,8 @@ def admin_resume(body: AdminIn, session=Depends(db.get_session)):
 
 
 @app.post("/api/admin/reset")
-def admin_reset(session=Depends(db.get_session)):
+def admin_reset(request: Request, session=Depends(db.get_session)):
+    _require_admin_token(request)
     # 子表先删（外键顺序）
     session.query(AuditEvent).delete()
     session.query(Approval).delete()

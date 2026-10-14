@@ -1,6 +1,6 @@
 """SQLAlchemy 数据模型。所有数据均为虚构演示数据，无真实个人信息。"""
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -67,6 +67,18 @@ class Approval(Base):
     decided_at = Column(String(32), nullable=False, default="")
     created_at = Column(String(32), nullable=False)
 
+    __table_args__ = (
+        # 每个 action 同时只能有一张 pending 审批单（部分唯一索引）。
+        # ensure_pending_approval 是"先查后插"，并发下会产生重复 pending 单
+        # （幽灵单据）；索引让数据库做最终裁决，冲突时函数内重查返回已存在的那张。
+        Index(
+            "uq_approval_pending_per_action",
+            "action_id",
+            unique=True,
+            sqlite_where=text("status = 'pending'"),
+        ),
+    )
+
 
 class AuditEvent(Base):
     """审计事件：哈希链 hash=sha256(prev_hash|ts|event|detail)。"""
@@ -82,6 +94,12 @@ class AuditEvent(Base):
     detail = Column(Text, nullable=False, default="")
     prev_hash = Column(String(64), nullable=False)
     hash = Column(String(64), nullable=False)
+
+    __table_args__ = (
+        # 哈希链防分叉：每个事件的前驱哈希全局唯一。并发写入读到同一个 last 时，
+        # 只有一个能插入成功；失败者在 append_event 内 savepoint 回滚后重试。
+        Index("uq_audit_prev_hash", "prev_hash", unique=True),
+    )
 
 
 class Outbox(Base):

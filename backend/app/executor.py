@@ -10,7 +10,9 @@
   crm.update     写库更新客户字段
   mail.send      写 outbox 表（模拟发送，不发真实邮件）
   crm.export_all / 未知 tool  直接拒绝
-执行成功后标记 approval.used=1（一次一用）。
+审批一次一用：执行前原子认领（UPDATE ... WHERE used=0），并发下只认领成功者执行。
+输入类型校验：params/updates 非 dict 时返回 invalid_params/invalid_updates，
+绝不抛未捕获异常（LLM 输出不可控）。
 """
 
 from __future__ import annotations
@@ -21,6 +23,8 @@ from typing import Any, Dict, Optional, Tuple
 
 from . import policy
 from .models import Approval, Customer, Outbox, SystemState
+
+from sqlalchemy import update as sa_update
 
 # 允许 crm.update 修改的字段白名单
 UPDATE_FIELDS = {"name", "company", "email", "phone", "notes"}
@@ -33,6 +37,22 @@ def _utcnow() -> str:
 def _is_stopped(session) -> bool:
     row = session.get(SystemState, "emergency_stop")
     return row is not None and row.value == "1"
+
+
+def _claim_approval(session, approval: Approval) -> bool:
+    """原子认领审批（一次一用）：UPDATE ... WHERE used=0，rowcount 决定成败。
+
+    查与置必须是一条原子语句，否则两个并发 /execute（或 wait-mode 等待线程 +
+    REST execute）可同时通过 used=0 检查，各执行一次敏感动作。
+    调用方负责 commit。
+    """
+    rowcount = session.execute(
+        sa_update(Approval)
+        .where(Approval.id == approval.id, Approval.used == 0)
+        .values(used=1)
+    ).rowcount
+    session.flush()
+    return rowcount == 1
 
 
 def _find_valid_approval(session, action) -> Tuple[Optional[Approval], str]:
@@ -64,6 +84,15 @@ def execute(session, action) -> Tuple[bool, Optional[Dict[str, Any]], str]:
     """
     params = json.loads(action.params or "{}")
 
+    # 0. 输入类型校验（LLM 输出不可控；非法输入必须返回错误码，不能抛 500）
+    # 注意：updates 的校验必须在审批认领之前——非法输入不能消耗一次性的审批。
+    if not isinstance(params, dict):
+        return False, None, "invalid_params"
+    if action.tool == "crm.update":
+        updates = params.get("updates")
+        if updates is not None and not isinstance(updates, dict):
+            return False, None, "invalid_updates"
+
     # 1. 急停复查
     if _is_stopped(session):
         return False, None, "emergency_stop"
@@ -79,6 +108,9 @@ def execute(session, action) -> Tuple[bool, Optional[Dict[str, Any]], str]:
         approval, err = _find_valid_approval(session, action)
         if approval is None:
             return False, None, err
+        # 审批一次一用：先原子认领再执行（认领失败说明被并发认领，直接拒绝）
+        if not _claim_approval(session, approval):
+            return False, None, "approval_already_used"
 
     # 4. 按 tool 真实执行
     if action.tool == "crm.read":
@@ -132,10 +164,5 @@ def execute(session, action) -> Tuple[bool, Optional[Dict[str, Any]], str]:
     else:
         # crm.export_all 与未知 tool：直接拒绝（策略已 deny，这里是纵深防御）
         return False, None, f"tool_refused: {action.tool}"
-
-    # 5. 审批一次一用
-    if approval is not None:
-        approval.used = 1
-        session.flush()
 
     return True, result, ""

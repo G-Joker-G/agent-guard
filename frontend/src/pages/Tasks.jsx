@@ -1,7 +1,15 @@
 import { useEffect, useState, useCallback } from 'react'
+import { Plus, ArrowLeft, RefreshCw } from 'lucide-react'
 import { api, apiErrorMessage } from '../api'
 import { SCENARIO_LABEL, paramsSummary, formatTime } from '../labels'
-import { TaskBadge, ActionBadge, ErrorBox, Empty } from '../components'
+import { TaskBadge, ActionBadge } from '../components/status'
+import { VerdictPipeline } from '../components/pipeline'
+import { PageHeader, EmptyState } from '../components/layout'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { Button } from '../components/ui/button'
+import { Input, Select } from '../components/ui/input'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
+import { Alert, AlertDescription } from '../components/ui/alert'
 
 export function TasksPage({ onOpenTask, refreshKey }) {
   const [tasks, setTasks] = useState([])
@@ -31,45 +39,63 @@ export function TasksPage({ onOpenTask, refreshKey }) {
 
   return (
     <div>
-      <div className="panel">
-        <h2>创建任务</h2>
-        <div className="row">
-          <input
-            type="text" placeholder="任务标题，例如：跟进客户 A 的续约" value={title}
-            onChange={(e) => setTitle(e.target.value)} style={{ flex: 1, minWidth: 220 }}
-          />
-          <select value={scenario} onChange={(e) => setScenario(e.target.value)}>
-            <option value="followup">客户跟进（followup）</option>
-            <option value="export_attack">越权攻击（export_attack）</option>
-            <option value="batch">批量操作（batch）</option>
-          </select>
-          <button className="btn primary" onClick={create} disabled={busy}>创建</button>
-        </div>
-        <ErrorBox error={error} onClose={() => setError('')} />
-      </div>
+      <PageHeader title="任务中心" desc="创建 Agent 任务，跟踪每个任务的工具调用与网关裁决状态。" />
 
-      <div className="panel">
-        <h2>任务列表</h2>
-        {tasks.length === 0 ? <Empty text="暂无任务，请先创建一个" /> : (
-          <table className="tbl">
-            <thead>
-              <tr><th>ID</th><th>标题</th><th>场景</th><th>状态</th><th>创建时间</th><th></th></tr>
-            </thead>
-            <tbody>
-              {tasks.map((t) => (
-                <tr key={t.id}>
-                  <td className="mono">#{t.id}</td>
-                  <td>{t.title}</td>
-                  <td className="nowrap">{SCENARIO_LABEL[t.scenario] || t.scenario}</td>
-                  <td><TaskBadge status={t.status} /></td>
-                  <td className="nowrap muted">{formatTime(t.created_at)}</td>
-                  <td><button className="btn small" onClick={() => onOpenTask(t.id)}>详情</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <Card className="mb-4">
+        <CardHeader><CardTitle>创建任务</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="text" placeholder="任务标题，例如：跟进客户 A 的续约" value={title}
+              onChange={(e) => setTitle(e.target.value)} className="min-w-55 flex-1"
+            />
+            <Select value={scenario} onChange={(e) => setScenario(e.target.value)} className="w-48">
+              <option value="followup">客户跟进（followup）</option>
+              <option value="export_attack">越权攻击（export_attack）</option>
+              <option value="batch">批量操作（batch）</option>
+            </Select>
+            <Button onClick={create} disabled={busy}><Plus size={15} /> 创建</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>任务列表（{tasks.length}）</CardTitle></CardHeader>
+        <CardContent>
+          {tasks.length === 0 ? (
+            <EmptyState title="暂无任务" desc="创建一个任务，演示 Agent 会产出结构化工具请求。" />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead><TableHead>标题</TableHead><TableHead>场景</TableHead>
+                  <TableHead>状态</TableHead><TableHead>创建时间</TableHead><TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tasks.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell className="tnum font-mono">#{t.id}</TableCell>
+                    <TableCell className="max-w-72 truncate font-medium">{t.title}</TableCell>
+                    <TableCell className="whitespace-nowrap">{SCENARIO_LABEL[t.scenario] || t.scenario}</TableCell>
+                    <TableCell><TaskBadge status={t.status} /></TableCell>
+                    <TableCell className="tnum whitespace-nowrap text-muted-foreground">{formatTime(t.created_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => onOpenTask(t.id)}>详情</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -115,58 +141,82 @@ export function TaskDetailPage({ taskId, onBack, refreshKey }) {
 
   return (
     <div>
-      <div className="toolbar">
-        <button className="btn small" onClick={onBack}>← 返回任务列表</button>
-        <span className="poll-note">每 1.5 秒自动刷新，跟踪状态流转</span>
-      </div>
-      <ErrorBox error={error} onClose={() => setError('')} />
-      {!task ? <Empty text="加载中…" /> : (
-        <div className="panel">
-          <h2>任务 #{task.id} · {task.title}</h2>
-          <dl className="kv">
-            <dt>场景</dt><dd>{SCENARIO_LABEL[task.scenario] || task.scenario}（{task.scenario}）</dd>
-            <dt>状态</dt><dd><TaskBadge status={task.status} /></dd>
-            <dt>创建时间</dt><dd className="muted">{formatTime(task.created_at)}</dd>
-          </dl>
-          <div className="row" style={{ marginTop: 12 }}>
-            <button className="btn primary" disabled={busy} onClick={() => run(() => api.planTask(task.id), '生成计划')}>
-              生成计划（plan）
-            </button>
-            <button className="btn" disabled={busy} onClick={() => run(() => api.advanceTask(task.id), '推进')}>
-              推进（advance）
-            </button>
-          </div>
+      <PageHeader
+        title={`任务 #${taskId}`}
+        desc="每 1.5 秒自动刷新，跟踪状态流转。"
+        actions={<Button variant="outline" size="sm" onClick={onBack}><ArrowLeft size={15} /> 返回任务列表</Button>}
+      />
 
-          <h3>动作列表（{actions.length}）</h3>
-          {actions.length === 0 ? <Empty text="暂无动作，点击「生成计划」让演示 Agent 产出结构化请求" /> : (
-            <table className="tbl">
-              <thead>
-                <tr><th>序号</th><th>工具</th><th>参数摘要</th><th>状态</th><th>判定理由</th><th>操作</th></tr>
-              </thead>
-              <tbody>
-                {actions.map((a) => (
-                  <tr key={a.id}>
-                    <td className="mono nowrap">#{a.seq}</td>
-                    <td className="mono nowrap">{a.tool}</td>
-                    <td>{paramsSummary(a.params)}</td>
-                    <td className="nowrap"><ActionBadge status={a.status} /></td>
-                    <td className="muted">{a.decision_reason || a.decision || '—'}</td>
-                    <td className="nowrap">
-                      {executable(a.status) && (
-                        <button className="btn small primary" disabled={busy}
-                          onClick={() => run(() => api.executeAction(a.id), '执行')}>执行</button>
-                      )}
-                      {a.status === 'needs_approval' && (
-                        <button className="btn small" disabled={busy} style={{ marginLeft: 6 }}
-                          onClick={() => createApprovalFor(a.id)}>创建审批单</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {!task ? (
+        <EmptyState title="加载中…" />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              {task.title} <TaskBadge status={task.status} />
+            </CardTitle>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
+              <span>场景：{SCENARIO_LABEL[task.scenario] || task.scenario} <span className="font-mono text-xs">({task.scenario})</span></span>
+              <span className="tnum">创建于 {formatTime(task.created_at)}</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex flex-wrap gap-2">
+              <Button disabled={busy} onClick={() => run(() => api.planTask(task.id), '生成计划')}>
+                生成计划（plan）
+              </Button>
+              <Button variant="secondary" disabled={busy} onClick={() => run(() => api.advanceTask(task.id), '推进')}>
+                推进（advance）
+              </Button>
+              <Button variant="ghost" size="sm" disabled={busy} onClick={load}>
+                <RefreshCw size={14} /> 刷新
+              </Button>
+            </div>
+
+            <div className="mb-2 text-sm font-medium">动作列表（{actions.length}）</div>
+            {actions.length === 0 ? (
+              <EmptyState title="暂无动作" desc="点击「生成计划」让演示 Agent 产出结构化请求。" />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>序号</TableHead><TableHead>工具</TableHead><TableHead>裁决流水线</TableHead>
+                    <TableHead>参数摘要</TableHead><TableHead>状态</TableHead><TableHead>判定理由</TableHead>
+                    <TableHead className="text-right">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {actions.map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="tnum font-mono">#{a.seq}</TableCell>
+                      <TableCell className="whitespace-nowrap font-mono text-xs">{a.tool}</TableCell>
+                      <TableCell className="min-w-52"><VerdictPipeline action={a} /></TableCell>
+                      <TableCell className="max-w-64 text-muted-foreground">{paramsSummary(a.params)}</TableCell>
+                      <TableCell className="whitespace-nowrap"><ActionBadge status={a.status} /></TableCell>
+                      <TableCell className="max-w-48 text-xs text-muted-foreground">{a.decision_reason || a.decision || '—'}</TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        {executable(a.status) && (
+                          <Button size="sm" disabled={busy}
+                            onClick={() => run(() => api.executeAction(a.id), '执行')}>执行</Button>
+                        )}
+                        {a.status === 'needs_approval' && (
+                          <Button variant="outline" size="sm" disabled={busy}
+                            onClick={() => createApprovalFor(a.id)}>创建审批单</Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   )

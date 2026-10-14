@@ -153,6 +153,13 @@ table.tbl tr:hover td { background: rgba(76, 141, 255, 0.06); }
 /* 表格长文本换行（动作参数摘要等长字段不撑开布局） */
 .tbl td { word-break: break-word; }
 
+/* 管理口令输入框（可选功能，未启用时就是一个小输入框，无行为变化） */
+.token-input {
+  width: 150px; padding: 6px 8px; font-size: 13px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--fg);
+}
+
 /* —— 演示步骤 —— */
 .step-log { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
 .step { border-bottom: 1px dashed var(--border); padding: 10px 0; }

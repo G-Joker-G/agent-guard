@@ -17,7 +17,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 import urllib.request
 
 from mcp import ClientSession
@@ -40,6 +39,15 @@ def _no_proxy_client_factory(**kwargs):
 
 def api_get(base: str, path: str):
     with urllib.request.urlopen(base + path) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def api_post(base: str, path: str, body=None):
+    data = json.dumps(body or {}).encode("utf-8")
+    req = urllib.request.Request(base + path, data=data,
+                                 headers={"Content-Type": "application/json"},
+                                 method="POST")
+    with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -93,10 +101,16 @@ async def main(base: str):
             for _ in range(600):
                 st = await session.call_tool("guard_check_status", {"action_id": action_id})
                 info = json.loads(st.content[0].text)
+                if info["status"] == "approved":
+                    # 批准到达时网关 wait 已超时返回（无人执行）：补一次显式执行，
+                    # 否则动作永远停在 approved、轮询空转 20 分钟后 exit(1)
+                    print("   审批在网关等待超时后才到达，补调 POST /api/actions/{id}/execute")
+                    api_post(base, f"/api/actions/{action_id}/execute")
+                    continue
                 if info["status"] in TERMINAL:
                     print(json.dumps(info, ensure_ascii=False, indent=2)[:1200])
                     break
-                time.sleep(2)
+                await asyncio.sleep(2)
             else:
                 print("轮询超时（600s），动作仍未终态")
                 sys.exit(1)

@@ -1,11 +1,21 @@
 // 统一 API 封装：严格按 PLAN.md API 契约 v1 调用后端（http://localhost:8000，路由前缀 /api）
 // dev 模式下通过 vite proxy 同源 /api → localhost:8000
+//
+// 管理口令（可选）：后端设置 GUARD_ADMIN_TOKEN 后，管理/审批接口要求
+// X-Admin-Token 头。前端从 localStorage('guard_admin_token') 读取并自动附带；
+// 未设置时行为与之前完全一致（本机演示零负担）。
+
+function adminToken() {
+  try { return localStorage.getItem('guard_admin_token') || '' } catch { return '' }
+}
 
 async function request(method, path, body) {
   const opts = {
     method,
     headers: { 'Content-Type': 'application/json' },
   }
+  const token = adminToken()
+  if (token) opts.headers['X-Admin-Token'] = token
   if (body !== undefined) opts.body = JSON.stringify(body)
   const res = await fetch(path, opts)
   const text = await res.text()

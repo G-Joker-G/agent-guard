@@ -103,7 +103,14 @@ class AuditEvent(Base):
 
 
 class Outbox(Base):
-    """模拟发件箱：mail.send 的真实写入记录（不发送真实邮件）。"""
+    """发件箱：mail.send 的写入记录。
+
+    默认行为是模拟发送（只写表，不触网）。真实发送需显式开启
+    REAL_MAIL_ENABLED=1，此时：
+      - real_sent=1 表示已真实发出；
+      - blocked_reason 非空表示被拒绝（白名单外 / 缺 SMTP 配置 / 发送失败），
+        行仍保留用于审计追踪。
+    """
 
     __tablename__ = "outbox"
 
@@ -114,6 +121,8 @@ class Outbox(Base):
     task_id = Column(Integer, nullable=True)
     action_id = Column(Integer, nullable=True)
     created_at = Column(String(32), nullable=False)
+    real_sent = Column(Integer, nullable=False, default=0)
+    blocked_reason = Column(String(64), nullable=True, default=None)
 
 
 class SystemState(Base):

@@ -1,8 +1,49 @@
-# Agent Guard 本地更新日志（未推送远端）
+# Agent Guard 本地更新日志
 
-本文档记录 2026-10-13 白天两轮本地审计与加固的全部改动。
-远端 main 分支保持 2026-10-13 凌晨的验收基线（`db805d7`）不动；
-以下改动只存在于本机 git，需用户验收确认后才推。
+本文档记录 2026-10-13 起各轮本地开发的全部改动（远端 main 已于 2026-10-14
+推送到 `bc7431d0`，与本地一致；此后新增改动见"第三轮"，待下次 push）。
+
+---
+
+## 第三轮（2026-10-16）：真实邮件发送能力 + 真实验收手册（本地，未推送）
+
+### 新增：`mail.send` 真实发送（`backend/app/realmail.py`，显式开关）
+
+- **依据**：用户要求真实验收做到"阶段二"——真实发出一封邮件，而不只是写模拟表。
+- **内容**：
+  - `REAL_MAIL_ENABLED=0` 默认关闭：行为与之前完全一致（只写 outbox，不触网）；
+  - `=1` 时需 `SMTP_HOST/PORT(默认465)/USER/PASS/FROM` + `REAL_MAIL_ALLOWLIST`
+    （逗号分隔）；缺任何一项 → 拒绝 `real_mail_config_missing`；
+  - 只允许白名单地址，其他一律拒绝 `real_mail_not_allowlisted`（fail-closed）；
+  - 拒绝时在 outbox 记一条 blocked 记录（`blocked_reason` 非空），且**不消耗
+    一次性审批**（门禁在审批认领之前）；
+  - 真实发出后 outbox 行标记 `real_sent=1`，审计追加 `mail.real_sent` 事件
+    （含 to、subject，正文只记长度摘要）；
+  - SMTP 发送异常 → `real_mail_send_failed`，不抛 500；
+  - `SMTP_PASS` 只从环境变量读取，不进日志/审计/返回值/仓库。
+- **数据模型**：`outbox` 表新增 `real_sent`（INTEGER，默认 0）、`blocked_reason`
+  （VARCHAR(64)，默认 NULL）；`init_db` 含老库轻量迁移（ALTER TABLE，实测通过）。
+- **测试**：新增 `backend/tests/test_v2_realmail.py` 6 项（mock smtplib，
+  零真实网络调用）：默认关闭走模拟、缺配置拒绝、白名单外拒绝、mock 发送成功
+  记审计、发送异常不抛 500、白名单大小写宽容——全绿。
+
+### 新增：真实验收手册 `docs/ACCEPTANCE_REAL.md`
+
+- 中文、Windows PowerShell 命令，用户一步一步执行：Step 0 准备（pull/补 PNG/
+  npm install/填 `.env`）→ 阶段一真实 LLM 闭环（场景 A/B、急停、熔断）→
+  阶段二真实邮件 → 场景 D MCP 真机；每步有预期现象、通过标准、排错表、
+  "回传给 Muse"清单；诚实标注云电脑已验证 vs 只能真机验证。
+
+### 文档更新
+
+- `.env.example`：新增 `REAL_MAIL_*` / `SMTP_*` 注释段（占位值，无真实信息）；
+- `README.md`：已知限制新增真实邮件说明；顶部声明更新（默认模拟，可显式开启）；
+- `docs/LLM.md`：环境变量表新增 4 行 + "真实邮件发送"小节。
+
+### 测试证据（云电脑亲自跑过）
+
+- `pytest backend/tests/ -q` → **50 passed**（原 44 + 新增 6），含老库迁移实测；
+- 未验证（只能真机）：真实 key 场景 A/B、真实 SMTP 发送、MCP 真机、前端真人点击。
 
 ---
 

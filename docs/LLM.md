@@ -24,8 +24,30 @@ V2 的真实 LLM Agent 循环（`backend/app/llm_agent.py`）通过 OpenAI-compa
 | `LLM_MAX_STEPS` | `12` | **成本熔断**：单轮最大步数（每步 = 1 次 API 调用），开发期 stub 同样受约束 |
 | `LLM_DAILY_MAX_CALLS` | `50` | **成本熔断**：每天真实 API 调用上限（本地 stub 不计费、不计入）；超限后拒绝启动、循环中终止 |
 | `LLM_KILL_SWITCH` | `0` | **成本熔断**：紧急停止开关，`=1` 时禁用真实 LLM 入口（`/run-llm` 直接 409，不启动线程） |
+| `REAL_MAIL_ENABLED` | `0` | 真实邮件发送总开关；`=1` 才启用（见下） |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | （空）/`465` | SMTP 配置，`SMTP_PASS` 只从 `.env` 读取 |
+| `REAL_MAIL_ALLOWLIST` | （空） | 收件白名单（逗号分隔）；只允许白名单地址真实发出 |
 
-`.env` 已在 `.gitignore` 中，**绝不提交**。代码、日志、文档、测试中不出现真实 key。
+`.env` 已在 `.gitignore` 中，**绝不提交**。代码、日志、文档、测试中不出现真实 key 和 SMTP 密码。
+
+## 真实邮件发送（`mail.send`，可选）
+
+默认 `mail.send` 只写本地 outbox 模拟表（`real_sent=0`），不触网。验收阶段二
+需要真实发出时：
+
+1. `.env` 中设置 `REAL_MAIL_ENABLED=1`，填好 `SMTP_*`，`REAL_MAIL_ALLOWLIST`
+   填**你自己的邮箱**（逗号分隔可多个）；
+2. 流程不变：`mail.send` 依然先过网关策略（needs_approval）→ 人工批准 →
+   执行器复查 → 真实发送；
+3. 真实发出后：outbox 行标记 `real_sent=1`；审计追加 `mail.real_sent` 事件
+  （含 to、subject，正文只记长度摘要）；
+4. 安全行为（fail-closed）：开关开启但缺任何 SMTP 配置 → 拒绝
+   `real_mail_config_missing`；收件人不在白名单 → 拒绝
+   `real_mail_not_allowlisted`；两种情况都在 outbox 记一条 blocked 记录
+   （`blocked_reason` 非空），且**不消耗一次性审批**（门禁在审批认领之前）；
+   SMTP 发送中抛异常 → `real_mail_send_failed`，不抛 500。
+
+注意：真实发送是**副作用操作**，验收时白名单只填你自己的邮箱。
 
 ## 开发期零真实调用声明
 

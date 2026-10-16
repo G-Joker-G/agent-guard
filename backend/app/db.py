@@ -66,6 +66,13 @@ def init_db() -> None:
     # "unable to open database file"；这里保证父目录存在。
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(engine)
+    # 轻量迁移：老库的 outbox 表补 real_sent / blocked_reason 列（真实邮件能力）
+    with engine.begin() as conn:
+        cols_outbox = [c["name"] for c in inspect(conn).get_columns("outbox")]
+        if "real_sent" not in cols_outbox:
+            conn.execute(text("ALTER TABLE outbox ADD COLUMN real_sent INTEGER DEFAULT 0"))
+        if "blocked_reason" not in cols_outbox:
+            conn.execute(text("ALTER TABLE outbox ADD COLUMN blocked_reason VARCHAR(64)"))
     # 轻量迁移：老库的 actions 表补 origin 列
     # 注意：inspect 必须用同一个 conn（inspect(conn)），不能 inspect(engine)——
     # 后者会从池里拿第二个连接发 BEGIN IMMEDIATE，而外层事务正持有 RESERVED 锁，

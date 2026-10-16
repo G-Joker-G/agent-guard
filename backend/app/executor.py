@@ -8,7 +8,9 @@
 通过后按 tool 真实执行：
   crm.read       查库返回客户
   crm.update     写库更新客户字段
-  mail.send      写 outbox 表（模拟发送，不发真实邮件）
+  mail.send      写 outbox 表；默认模拟（不触网）。REAL_MAIL_ENABLED=1 时走
+                 真实 SMTP 发送，但只允许 REAL_MAIL_ALLOWLIST 白名单地址，
+                 其他一律拒绝并记 blocked 记录；缺 SMTP 配置同样拒绝。
   crm.export_all / 未知 tool  直接拒绝
 审批一次一用：执行前原子认领（UPDATE ... WHERE used=0），并发下只认领成功者执行。
 输入类型校验：params/updates 非 dict 时返回 invalid_params/invalid_updates，
@@ -22,6 +24,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from . import policy
+from . import audit as audit_mod
+from . import realmail
 from .models import Approval, Customer, Outbox, SystemState
 
 from sqlalchemy import update as sa_update
@@ -76,6 +80,50 @@ def _find_valid_approval(session, action) -> Tuple[Optional[Approval], str]:
     return appr, ""
 
 
+def _resolve_recipient(session, params) -> Tuple[Optional[str], str]:
+    """解析 mail.send 收件人。返回 (to_email, err_code)，err 为空表示成功。"""
+    to_email = params.get("to")
+    if not to_email and params.get("customer_id"):
+        customer = session.get(Customer, params.get("customer_id"))
+        if customer is None:
+            return None, "customer_not_found"
+        to_email = customer.email
+    if not to_email:
+        return None, "missing_recipient"
+    return to_email, ""
+
+
+def _real_mail_gate(session, action, to_email: str, params) -> str:
+    """真实邮件发送前置门禁（在审批认领之前）。
+
+    返回 err_code，为空表示放行。拒绝时写一条 blocked 的 outbox 记录
+    （real_sent=0，blocked_reason=原因码），并返回机器可读错误码。
+    设计意图：配置缺失/白名单外的发送注定失败，不应消耗一次性的审批。
+    """
+    if not realmail.is_enabled():
+        return ""
+    config, missing = realmail.get_config()
+    if config is None:
+        reason = "config_missing:" + ",".join(missing)
+    elif not realmail.is_allowlisted(to_email, config["allowlist"]):
+        reason = "not_allowlisted"
+    else:
+        return ""
+    row = Outbox(
+        to_email=to_email,
+        subject=params.get("subject", ""),
+        body=params.get("body", ""),
+        task_id=action.task_id,
+        action_id=action.id,
+        created_at=_utcnow(),
+        real_sent=0,
+        blocked_reason=reason,
+    )
+    session.add(row)
+    session.flush()
+    return "real_mail_" + reason.split(":")[0]
+
+
 def execute(session, action) -> Tuple[bool, Optional[Dict[str, Any]], str]:
     """执行单个动作。返回 (ok, result, reason)。
 
@@ -92,6 +140,17 @@ def execute(session, action) -> Tuple[bool, Optional[Dict[str, Any]], str]:
         updates = params.get("updates")
         if updates is not None and not isinstance(updates, dict):
             return False, None, "invalid_updates"
+
+    # 0.5 真实邮件前置门禁（mail.send 且开关开启时）：配置缺失/白名单外直接
+    # 拒绝并记 blocked 记录；在审批认领之前，注定失败的发送不消耗一次性审批。
+    to_email = None
+    if action.tool == "mail.send":
+        to_email, err = _resolve_recipient(session, params)
+        if err:
+            return False, None, err
+        gate_err = _real_mail_gate(session, action, to_email, params)
+        if gate_err:
+            return False, None, gate_err
 
     # 1. 急停复查
     if _is_stopped(session):
@@ -141,14 +200,7 @@ def execute(session, action) -> Tuple[bool, Optional[Dict[str, Any]], str]:
         result = {"id": customer.id, "updated": changed}
 
     elif action.tool == "mail.send":
-        to_email = params.get("to")
-        if not to_email and params.get("customer_id"):
-            customer = session.get(Customer, params.get("customer_id"))
-            if customer is None:
-                return False, None, "customer_not_found"
-            to_email = customer.email
-        if not to_email:
-            return False, None, "missing_recipient"
+        # to_email 已在前置门禁中解析并通过白名单/配置检查（to_email 非空确定成立）
         row = Outbox(
             to_email=to_email,
             subject=params.get("subject", ""),
@@ -156,10 +208,37 @@ def execute(session, action) -> Tuple[bool, Optional[Dict[str, Any]], str]:
             task_id=action.task_id,
             action_id=action.id,
             created_at=_utcnow(),
+            real_sent=0,
+            blocked_reason=None,
         )
         session.add(row)
         session.flush()
-        result = {"outbox_id": row.id, "to": to_email, "subject": row.subject}
+        real_sent = False
+        if realmail.is_enabled():
+            ok, send_err = realmail.send_real_mail(
+                to_email, params.get("subject", ""), params.get("body", ""))
+            if not ok:
+                row.blocked_reason = "send_failed"
+                session.flush()
+                return False, None, "real_mail_send_failed"
+            real_sent = True
+            row.real_sent = 1
+            session.flush()
+            # 审计：记录真实发出（to/subject；正文只记长度摘要，不记敏感内容）
+            audit_mod.append_event(
+                session,
+                task_id=action.task_id,
+                action_id=action.id,
+                event="mail.real_sent",
+                actor="executor",
+                detail={
+                    "to": to_email,
+                    "subject": params.get("subject", ""),
+                    "body_len": len(params.get("body", "") or ""),
+                },
+            )
+        result = {"outbox_id": row.id, "to": to_email, "subject": row.subject,
+                  "real_sent": real_sent}
 
     else:
         # crm.export_all 与未知 tool：直接拒绝（策略已 deny，这里是纵深防御）

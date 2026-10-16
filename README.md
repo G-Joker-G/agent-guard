@@ -6,7 +6,8 @@
 > ① **演示 Agent**（确定性模拟，非真实 LLM 推理）；
 > ② **真实 LLM Agent**（OpenAI-compatible 接口，需自行配置 `LLM_API_KEY`）。
 > 无论哪种 Agent，所有工具调用都经过**同一服务端网关**裁决；前端按钮状态不是安全边界。
-> 所有客户数据均为虚构，邮件为模拟发送（只写入本地发件箱），不连接任何真实系统。
+> 所有客户数据均为虚构；邮件默认模拟发送（只写入本地发件箱），不连接任何真实系统。
+> 如需真实发送，可显式开启 `REAL_MAIL_ENABLED=1` 并配置 SMTP（仅白名单地址，见下）。
 
 ## 架构
 
@@ -122,6 +123,12 @@ agent-guard/
 
 ## 已知限制
 
+- 真实邮件发送：默认关闭（模拟写 outbox）。开启方式见 `.env.example` 的
+  `REAL_MAIL_*` / `SMTP_*` 注释：`REAL_MAIL_ENABLED=1` + SMTP 配置 +
+  `REAL_MAIL_ALLOWLIST` 白名单。启用后仅白名单地址可真实发出，其他一律拒绝
+  并记 blocked 记录；真实发出后 outbox 标记 `real_sent=1`，审计记
+  `mail.real_sent` 事件（to/subject，不记正文）。SMTP 密码只从 `.env` 读取，
+  不进日志/审计/仓库。
 - 开发期未使用真实 LLM key：真实模型端到端验证留待 Mac 验收（用户自行配置 key 后跑场景 A）。
 - 管理/审批接口鉴权：默认无鉴权（本机演示，绑定 127.0.0.1）；如需暴露到局域网/公网，
   在 `.env` 设置 `GUARD_ADMIN_TOKEN`，管理与审批决议接口即要求 `X-Admin-Token` 请求头

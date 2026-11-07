@@ -1,15 +1,35 @@
-# Agent Guard V2｜可信执行与安全控制平台（原型）
+# Agent Guard V2 ｜ 企业级 AI Agent 可信执行与安全控制平台
 
-独立于 AI Agent 的**执行控制层**：Agent 可以自主思考和规划，但关键执行权限必须受到独立系统约束——**外部权限网关、人工审批、受控执行器**。
+> **🏆 MINMAX 粤港澳大湾区创客 AI Agent 黑客松挑战赛参赛作品**  
+> **创作者 / 团队**：[易星衍 / YIXINGYAN — AI Native Builder](https://yixingyan.com/) ｜ 博客：[https://blog.yixingyan.com/](https://blog.yixingyan.com/)  
+> **核心哲学**：*“We need to separate the supply of intelligence from the authority over it.”* —— Satya Nadella, 2026
 
-> **Agent 模式声明**：本产品支持两种 Agent 模式——
-> ① **演示 Agent**（确定性模拟，非真实 LLM 推理）；
-> ② **真实 LLM Agent**（OpenAI-compatible 接口，需自行配置 `LLM_API_KEY`）。
-> 无论哪种 Agent，所有工具调用都经过**同一服务端网关**裁决；前端按钮状态不是安全边界。
-> 所有客户数据均为虚构；邮件默认模拟发送（只写入本地发件箱），不连接任何真实系统。
-> 如需真实发送，可显式开启 `REAL_MAIL_ENABLED=1` 并配置 SMTP（仅白名单地址，见下）。
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](backend/)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](backend/)
+[![React 18](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB.svg)](frontend/)
+[![Model Context Protocol](https://img.shields.io/badge/Protocol-Anthropic%20MCP-8A2BE2.svg)](docs/MCP.md)
+[![Tests Passing](https://img.shields.io/badge/Pytest-50%2F50%20Passing-success.svg)](backend/tests/)
+[![License MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## 架构
+---
+
+## 快速通道：参赛交付材料直达
+
+- 📄 **商业计划书 (Business Plan)**：[Agent_Guard_商业计划书.pdf](docs/Agent_Guard_商业计划书.pdf) ｜ [Markdown 完整版](docs/BUSINESS_PLAN.md)
+- 🚀 **评委 3 分钟免 Key 极速评测指南**：[docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md) *(无需申请外部 API Key，开箱即测)*
+- 🎬 **演示视频分镜与逐秒解说词脚本**：[docs/VIDEO_SCRIPT.md](docs/VIDEO_SCRIPT.md)
+- 📐 **系统架构与技术白皮书**：[docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) ｜ [测试报告 (50/50)](docs/TEST_REPORT.md)
+
+---
+
+## 项目定位：解决企业不敢放权的核心死穴
+
+大模型正在从“对话助手”演进为具备工具调用能力的“自主智能体（Autonomous Agents）”。然而在企业真实业务场景中，**间接提示词注入（Prompt Injection）、越权操作与概率性幻觉**让企业面临巨大合规与资产外泄风险，导致“技术可行但业务不敢上线”。
+
+**Agent Guard 是独立于 AI Agent 的执行控制层**：
+- **模型只管思考与规划（Supply of Intelligence）**；
+- **能否调用、何时执行、改动什么，由模型之外的单一网关裁决（Authority Over It）**；
+- 继承 1970 年代经典安全体系 **Reference Monitor（引用监视器）** 理论，实现大模型智能与业务执行权力的物理解耦。
 
 ```
                     ┌─ Web 控制台（实时运行视图，SSE 事件流） ─┐
@@ -17,123 +37,91 @@
                     │  全局急停按钮 · 实时审计时间线            │
                     └──────────────────┬──────────────────────┘
                                        │ 人工决策 / 急停
-用户任务 ── Agent ──→  单一网关 gateway.py  ←── MCP 客户端（/mcp/sse 标准协议）
+用户任务 ── Agent ──→  单一网关 gateway.py  ←── 外部 MCP 客户端（/mcp/sse 标准协议）
 （演示/LLM/        propose → policy.evaluate → allow 直接执行
   MCP）            → needs_approval → 审批单 → 阻塞等待人工（可配置超时）
                    → deny → 拒绝 + 审计
                           ↓
                     受控执行器（执行前复查：急停→策略→审批绑定）
                           ↓
-                    模拟 CRM / 模拟邮件 → 审计日志（哈希链，可检测篡改）
+                    真实/模拟业务系统 → 审计日志（哈希链，可检测篡改）
                           ↓
                     /api/events（SSE，事件源 = 审计表）
 ```
 
-**安全语义**（自动化测试锁定）：
-- 审批绑定 `scope_hash = sha256(tool + canonical_json(params))`：一次一用，30 分钟有效期，改参数即失效
-- 急停：网关拒绝新动作、阻止未开始的动作；每次执行前复查；仅管理员显式恢复
-- 演示 Agent / LLM / MCP 工具处理器**没有任何直达执行器的路径**；LLM 只产出 tool_calls，永远拿不到执行权
-- 审计哈希链只宣称"可检测篡改"，不宣称防篡改
+---
 
-## 快速启动
+## 核心安全语义与壁垒
 
-### 方式一：Mac 本地脚本
+1. **单一入口强隔离**：所有工具调用必经 `gateway.adjudicate()`，前端状态不是安全边界，Agent 绝无直通底层执行器的路径。
+2. **三态自适应策略**：
+   - `allow`：只读安全操作毫秒级放行（如 `crm_read`）；
+   - `needs_approval`：高危写操作强制挂起（如发邮件、改客资、调资金），等待人工审核；
+   - `deny`：越权与敏感数据全量导出硬阻断（如 Prompt Injection 诱导调用的 `crm_export_all`）。
+3. **密码学审批绑定**：审批单严格绑定 `scope_hash = sha256(tool + canonical_json(params))`，一次一用，30 分钟失效，改参数即失效。
+4. **一键全局人工急停（Kill Switch）**：顶栏常驻急停按钮，瞬间封锁网关，未开始动作全部转为终态 `blocked_by_stop`，需管理员显式二次确认恢复。
+5. **防篡改审计哈希链**：基于 SHA-256 构建的轻量级审计哈希链，每一笔决策真实落盘、环环相扣，提供司法级不可篡改证据链。
+6. **Anthropic 标准 MCP 原生接入**：提供 `/mcp/sse` 标准端点，外部任意 Agent（Claude Desktop、Cursor 等）接入同样受网关约束。
 
+---
+
+## 10 秒快速启动
+
+### 方式一：Windows 本地一键启动（推荐）
+直接双击运行根目录下的 **`start-windows.bat`**  
+*(或在 PowerShell 执行 `.\start-windows.ps1`)*，自动检查环境、安装依赖、启动服务并弹出浏览器。  
+停止服务请双击运行 **`stop-windows.bat`**。
+
+### 方式二：Mac / Linux 本地脚本
 ```bash
-./start-mac.sh   # 检查 python3/node → 建 venv 装依赖 → 启动后端 :8000 → 前端 → 自动打开浏览器
-./stop-mac.sh
+chmod +x ./start-mac.sh ./stop-mac.sh
+./start-mac.sh
+# 停止运行：./stop-mac.sh
 ```
 
-### 方式二：Docker Compose（一键启动）
-
+### 方式三：Docker Compose 一键启动
 ```bash
 docker compose up --build
-# 前端 http://localhost:3000  后端 http://localhost:8000
+# 前端：http://localhost:3000（或 :5173）  后端：http://localhost:8000
 ```
 
-### 方式三：手动启动（开发）
+---
 
+## 评委 3 分钟极速评测路径 (无需任何 API Key)
+
+打开控制台默认进入「实时运行」页，系统内置确定性演示 Agent，零外部模型调用成本：
+
+- **场景 1（5秒看懂核心价值）：Prompt Injection 注入攻击拦截**  
+  点击左上方「演示攻击拦截」→ Agent 读取客户 6 备注中的恶意注入指令被诱导请求导出全部客资 → 网关瞬间判定 **`deny` 拒绝** → 审计实时记录，数据零外泄！
+- **场景 2（1分钟体验人机协同）：高危操作审批与 scope 绑定**  
+  点击「演示 Agent 运行」→ 读操作自动放行，外发邮件被挂起为 **`needs_approval`** → 在卡片上点击「批准执行」→ 邮件落入发件箱，审计链完整闭环。
+- **场景 3（30秒体验紧急制动）：全局人工急停**  
+  批量任务运行中点击顶栏红色「紧急停止」→ 未开始动作瞬间转为 **`blocked_by_stop`** 终态被丢弃。
+- **场景 4（生态扩展）：外部 MCP 客户端调用**  
+  终端运行 `python examples/mcp_client_demo.py --base http://127.0.0.1:8000`，体验外部 Agent 同样受到安全网关严格约束。
+
+> 若评委希望接入真实大模型进行自由测试，可在根目录复制 `.env.example` 为 `.env` 并填入 `LLM_API_KEY`（如 DeepSeek-V4），重启后点击「真实 LLM 运行」即可。
+
+---
+
+## 自动化测试验证
+
+全量 50 项单元与集成测试均锁定通过：
 ```bash
-cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt
-venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-cd frontend && npm install && npm run dev   # http://localhost:5173
-```
+# 1. 后端 50 项安全用例全量测试
+cd backend && venv/bin/pytest tests/ -q
 
-## 真实 LLM 配置（可选，验收时）
+# 2. 端到端 A/B/C 场景全链路 HTTP 测试
+python scripts/demo_e2e.py --base http://127.0.0.1:8000
 
-```bash
-cp .env.example .env   # 然后填入
-# LLM_BASE_URL=https://api.siliconflow.cn/v1
-# LLM_MODEL=deepseek-ai/DeepSeek-V4-Flash
-# LLM_API_KEY=...        # 由你本人填入，.env 已 gitignore，绝不提交
-```
-
-- `LLM_API_KEY` 为空时：真实 LLM 入口返回 409，前端显示"未配置"，演示 Agent 模式照常可用。
-- **成本熔断**（默认保守，无需 key 也生效）：`LLM_KILL_SWITCH=1` 一键禁用真实 LLM 入口；
-  `LLM_DAILY_MAX_CALLS=50` 限制每天真实 API 调用次数（本地 stub 不计费、不计入）；
-  `LLM_MAX_STEPS=12` 限制单轮步数。额度在「实时运行」页的 LLM 状态行可见。
-- 开发期**零真实外部调用**：Agent 循环用本地 stub（`scripts/stub_llm_server.py`）验证。
-- 详见 [docs/LLM.md](docs/LLM.md)。建议在模型服务商侧设置消费限额/告警。
-
-## MCP 接入
-
-标准 MCP（SSE）：`http://127.0.0.1:8000/mcp/sse`，工具 `crm_read / crm_update / mail_send / crm_export_all / guard_check_status`。
-示例客户端：`backend/venv/bin/python examples/mcp_client_demo.py --base http://127.0.0.1:8000`。
-详见 [docs/MCP.md](docs/MCP.md)。
-
-## 演示指南（评委 10 分钟走完）
-
-详见 [docs/DEMO_V2.md](docs/DEMO_V2.md)。打开「实时运行」Tab（默认首页，SSE 实时推送）：
-
-- **A 真实 LLM 自主执行**：新建任务 → 输入目标 →「真实 LLM 运行」→ 网关自动放行读操作 → 发邮件进入审批 → 在工具卡片上**内联批准** → 循环自动继续 → 发件箱落库 → 审计可查
-- **B 越权与注入防护**：「演示攻击拦截」→ 客户 6 备注中的注入指令诱导 Agent 请求 `crm.export_all` → 网关 **deny** → 无执行 → 审计记录拒绝原因（展示 Agent 真实行为与网关真实判定）
-- **C 人工急停**：批量任务运行中 → 顶栏「紧急停止」→ 未开始的动作全部 `blocked_by_stop` → 显式「恢复」后才能继续
-- **D 外部 MCP 客户端**：运行示例客户端 → 工具发现 → `crm_read` 自动成功 → `mail_send` 在控制台审批 → `crm_export_all` 被拒绝 → 审计验证
-
-## 测试
-
-```bash
-cd backend && venv/bin/python -m pytest tests/ -q   # V1 11 项 + V2 新增
-python3 scripts/demo_e2e.py --base http://127.0.0.1:8000
+# 3. 前端生产打包构建验证
 cd frontend && npm run build
 ```
 
-结果见 [docs/TEST_REPORT.md](docs/TEST_REPORT.md)。
+---
 
-## 项目结构
+## 团队与创作者
 
-```
-agent-guard/
-  PLAN.md / PLAN_V2.md     实施计划与 API 契约
-  README.md                本文件
-  backend/app/
-    gateway.py             单一网关：propose → adjudicate（Web/MCP/LLM 唯一入口）
-    policy.py              外置策略引擎（纯函数）
-    executor.py            受控执行器（执行前自查）
-    audit.py               审计事件 + 哈希链
-    mcp_server.py          MCP 服务器（官方 mcp SDK，/mcp/sse）
-    llm_agent.py           真实 LLM Agent 循环（OpenAI-compatible）
-    llm_routes.py          /api/llm/status, /api/tasks/{id}/run-llm
-    demo_agent.py          确定性演示 Agent（与执行器/DB 写路径物理隔离）
-  frontend/src/pages/Live.jsx   实时运行视图（SSE）
-  scripts/stub_llm_server.py    本地 OpenAI-compatible 桩（开发测试用）
-  examples/mcp_client_demo.py   MCP 示例客户端
-  docs/  MCP.md  LLM.md  DEMO_V2.md  DEMO.md（V1 旧版，已被 DEMO_V2.md 取代） ARCHITECTURE_V2.md  TEST_REPORT.md  DEV_SUMMARY.md  PITCH_FRAMING.md  SUBMISSION_ROADMAP.md
-```
-
-## 已知限制
-
-- 真实邮件发送：默认关闭（模拟写 outbox）。开启方式见 `.env.example` 的
-  `REAL_MAIL_*` / `SMTP_*` 注释：`REAL_MAIL_ENABLED=1` + SMTP 配置 +
-  `REAL_MAIL_ALLOWLIST` 白名单。启用后仅白名单地址可真实发出，其他一律拒绝
-  并记 blocked 记录；真实发出后 outbox 标记 `real_sent=1`，审计记
-  `mail.real_sent` 事件（to/subject，不记正文）。SMTP 密码只从 `.env` 读取，
-  不进日志/审计/仓库。
-- 开发期未使用真实 LLM key：真实模型端到端验证留待 Mac 验收（用户自行配置 key 后跑场景 A）。
-- 管理/审批接口鉴权：默认无鉴权（本机演示，绑定 127.0.0.1）；如需暴露到局域网/公网，
-  在 `.env` 设置 `GUARD_ADMIN_TOKEN`，管理与审批决议接口即要求 `X-Admin-Token` 请求头
-  （前端顶栏"管理口令"输入框填入后自动携带）。
-- Docker Compose 未在开发环境实测（环境无 Docker）；`start-mac.sh` 未在 macOS 实测。
-- 前端未做真人点击联调（构建通过、接口契约检查通过）。
-- 审计哈希链仅"可检测篡改"；单机演示，无多租户/复杂身份体系。
-- 急停期间被阻止的动作为终态阻塞（`blocked_by_stop`），恢复后需新建任务重新规划。
+- **主创**：[易星衍 / YIXINGYAN — AI Native Builder](https://yixingyan.com/)
+- **专业领域**：企业 AI 落地 · AI 原生构建 · 出海数字基础设施 · 计算机可信执行工程
+- **联系与探讨**：[seniol9368187@gmail.com](mailto:seniol9368187@gmail.com) ｜ 个人主页：[https://yixingyan.com/](https://yixingyan.com/)

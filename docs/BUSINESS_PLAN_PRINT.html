@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Agent Guard 商业计划书 - 易星衍</title>
+<style>
+@page {
+    size: A4;
+    margin: 18mm 18mm 18mm 18mm;
+    @bottom-center {
+        content: counter(page);
+        font-size: 9pt;
+        color: #718096;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: #1a202c;
+    background-color: #ffffff;
+    line-height: 1.65;
+    font-size: 10.5pt;
+    margin: 0;
+    padding: 0;
+}
+
+/* 封面设计 */
+.cover-page {
+    page-break-after: always;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 40px 10px 20px 10px;
+}
+
+.cover-header {
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 20px;
+}
+
+.cover-badge {
+    display: inline-block;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 9pt;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 4px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 15px;
+}
+
+.cover-title {
+    font-size: 28pt;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+    margin: 10px 0;
+    letter-spacing: -0.02em;
+}
+
+.cover-subtitle {
+    font-size: 14pt;
+    color: #475569;
+    font-weight: 500;
+    margin-top: 10px;
+    line-height: 1.4;
+}
+
+.cover-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 25px;
+}
+
+.cover-pill {
+    background: #f1f5f9;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+    font-size: 8.5pt;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-weight: 600;
+}
+
+.cover-body {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 5px solid #2563eb;
+    border-radius: 6px;
+    padding: 24px;
+    margin: 40px 0;
+}
+
+.cover-body-title {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 12px;
+}
+
+.cover-body-text {
+    color: #334155;
+    font-size: 10pt;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.cover-footer {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.founder-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px 20px;
+    max-width: 420px;
+}
+
+.founder-title {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.founder-name {
+    font-size: 13pt;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 4px 0;
+}
+
+.founder-role {
+    font-size: 9pt;
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.founder-link {
+    font-size: 8.5pt;
+    color: #64748b;
+    text-decoration: none;
+    margin-top: 6px;
+    display: block;
+}
+
+.meta-info {
+    text-align: right;
+    font-size: 8.5pt;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+/* 正文样式 */
+h1.main-title {
+    font-size: 20pt;
+    font-weight: 800;
+    color: #0f172a;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+    page-break-after: avoid;
+}
+
+h2.section-title {
+    font-size: 13.5pt;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 24px;
+    margin-bottom: 10px;
+    padding-left: 8px;
+    border-left: 4px solid #2563eb;
+    page-break-after: avoid;
+}
+
+h3.subsection-title {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 16px;
+    margin-bottom: 6px;
+    page-break-after: avoid;
+}
+
+h4.sub-subsection-title {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #334155;
+    margin-top: 12px;
+    margin-bottom: 4px;
+}
+
+p {
+    margin: 6px 0;
+    text-align: justify;
+    line-height: 1.6;
+}
+
+strong {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 8.5pt;
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid #e2e8f0;
+}
+
+pre.code-block {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 8pt;
+    line-height: 1.45;
+    overflow-x: auto;
+    margin: 10px 0;
+    page-break-inside: avoid;
+}
+
+pre.code-block code {
+    background: transparent;
+    color: inherit;
+    border: none;
+    padding: 0;
+}
+
+.callout {
+    background: #f8fafc;
+    border-left: 4px solid #2563eb;
+    padding: 10px 14px;
+    border-radius: 0 4px 4px 0;
+    margin: 12px 0;
+    color: #334155;
+    font-size: 9.5pt;
+    page-break-inside: avoid;
+}
+
+.table-container {
+    margin: 14px 0;
+    page-break-inside: avoid;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+    line-height: 1.4;
+}
+
+th {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 700;
+    text-align: left;
+    padding: 7px 9px;
+    border: 1px solid #cbd5e1;
+}
+
+td {
+    padding: 6px 9px;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+}
+
+tr:nth-child(even) td {
+    background: #f8fafc;
+}
+
+ul, ol {
+    margin: 6px 0;
+    padding-left: 20px;
+}
+
+li.list-item, li.ordered-item {
+    margin: 3px 0;
+    line-height: 1.5;
+}
+
+hr.divider {
+    border: 0;
+    height: 1px;
+    background: #e2e8f0;
+    margin: 20px 0;
+}
+
+a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* 打印优化 */
+@media print {
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .no-print {
+        display: none;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- 独立封面 -->
+<div class="cover-page">
+    <div class="cover-header">
+        <span class="cover-badge">MINMAX 粤港澳大湾区创客 AI Agent 黑客松挑战赛</span>
+        <h1 class="cover-title">Agent Guard</h1>
+        <div class="cover-subtitle">企业级 AI Agent 可信执行与安全控制平台 · 商业计划书</div>
+        <div class="cover-pills">
+            <span class="cover-pill">执行控制层 Reference Monitor</span>
+            <span class="cover-pill">三态自适应策略引擎</span>
+            <span class="cover-pill">密码学 scope_hash 参数绑定</span>
+            <span class="cover-pill">一键人工急停 Kill Switch</span>
+            <span class="cover-pill">原生标准 MCP 协议支持</span>
+            <span class="cover-pill">防篡改审计哈希链</span>
+        </div>
+    </div>
+
+    <div class="cover-body">
+        <div class="cover-body-title">【核心立论】智能的供给，必须与执行的权力彻底分开</div>
+        <p class="cover-body-text">
+            “We need to separate the supply of intelligence from the authority over it.”<br>
+            大模型时代，企业不敢向 Agent 放权调用业务系统，根本症结在于缺乏独立于模型的执行安全网关。Agent Guard 借鉴经典计算机安全体系，在模型外部筑起物理隔离防线，打造企业敢用、好用、可溯源的 AI Agent 基础设施。
+        </p>
+    </div>
+
+    <div class="cover-footer">
+        <div class="founder-card">
+            <div class="founder-title">创始人 / Founder</div>
+            <div class="founder-name">易星衍 (YIXINGYAN)</div>
+            <div class="founder-role">AI-Native Builder ｜ 企业 AI 落地 · AI 原生构建 · 出海数字基础设施</div>
+            <a class="founder-link" href="https://yixingyan.com/">个人品牌：https://yixingyan.com/</a>
+            <a class="founder-link" href="https://blog.yixingyan.com/">思想博客：https://blog.yixingyan.com/</a>
+        </div>
+        <div class="meta-info">
+            <div><strong>赛事</strong>：MINMAX 粤港澳大湾区创客 AI Agent 黑客松</div>
+            <div><strong>版本</strong>：V2.0 商业计划书正式版</div>
+            <div><strong>日期</strong>：2026 年 11 月</div>
+            <div><strong>密级</strong>：商业计划书 (公开评审)</div>
+        </div>
+    </div>
+</div>
+
+<!-- 正文内容 -->
+<div class="doc-body">
+<h1 class="main-title">Agent Guard ｜ 企业级 AI Agent 可信执行与安全控制平台</h1>
+<h2 class="section-title">商业计划书 (Business Plan)</h2>
+<div class="callout"><p><strong>参赛项目</strong>：Agent Guard V2 —— 独立于大模型的执行控制与安全网关</p></div>
+<div class="callout"><p><strong>参赛团队 / 负责人</strong>：<a href="https://yixingyan.com/" target="_blank">易星衍 / YIXINGYAN — AI Native Builder</a></p></div>
+<div class="callout"><p><strong>个人品牌与研究站点</strong>：<a href="https://yixingyan.com/" target="_blank">https://yixingyan.com/</a> ｜ 博客：<a href="https://blog.yixingyan.com/" target="_blank">https://blog.yixingyan.com/</a></p></div>
+<div class="callout"><p><strong>参赛赛事</strong>：MINMAX 粤港澳大湾区创客 AI Agent 黑客松挑战赛</p></div>
+<div class="callout"><p><strong>文档版本</strong>：V2.0 商业计划书正式版（2026 年 11 月）</p></div>
+<hr class="divider" />
+<h2 class="section-title">目录</h2>
+<li class="ordered-item"><strong>项目执行摘要 (Executive Summary)</strong></li>
+<li class="ordered-item"><strong>行业背景与核心痛点 (Problem & Market Need)</strong></li>
+<li class="ordered-item"><strong>产品哲学与技术架构 (Solution & Architecture)</strong></li>
+<li class="ordered-item"><strong>六大核心功能与安全壁垒 (Core Features & Moats)</strong></li>
+<li class="ordered-item"><strong>协议标准与生态兼容 (MCP Ecosystem Integration)</strong></li>
+<li class="ordered-item"><strong>竞品对比与核心差异化优势 (Competitive Analysis)</strong></li>
+<li class="ordered-item"><strong>目标客群与典型落地场景 (Target Market & Use Cases)</strong></li>
+<li class="ordered-item"><strong>商业模式与盈利路径 (Business & Revenue Model)</strong></li>
+<li class="ordered-item"><strong>创始人与团队背景 (Founder & Team Profile)</strong></li>
+<li class="ordered-item"><strong>财务预测与发展路线图 (Roadmap & Milestones 2026-2027)</strong></li>
+<li class="ordered-item"><strong>风险控制与总结展望 (Risk Management & Conclusion)</strong></li>
+<hr class="divider" />
+<h2 class="section-title">一、 项目执行摘要 (Executive Summary)</h2>
+<h3 class="subsection-title">1.1 一句话定位</h3>
+<p><strong>Agent Guard 是企业级 AI Agent 的“数字刹车片与执行安全网关”</strong>——它独立于大模型之外，基于经典安全监视器理论（Reference Monitor），实现“智能供给与执行权力的物理解耦”，让企业敢于放权让 AI Agent 调用真实业务系统。</p>
+<h3 class="subsection-title">1.2 行业共识与理论基石</h3>
+<p>微软 CEO Satya Nadella 在 2026 年关于超级智能时代内部风险的论断中指出：</p>
+<div class="callout"><p><em>"We need to separate the supply of intelligence from the authority over it."</em></p></div>
+<div class="callout"><p>（<strong>我们必须将智能的供给，与执行的权力彻底分开。</strong>）</p></div>
+<p>传统解决方案试图通过“提示词约束（System Prompt）”或“模型内部微调（Safety Alignment）”来实现安全，本质上是让“嫌疑人自己监督自己”，在对抗性提示词注入（Prompt Injection）和模型幻觉面前极易崩溃。</p>
+<h3 class="subsection-title">1.3 核心破局点</h3>
+<p>Agent Guard 创造性地将安全防线<strong>外置于模型之外</strong>：</p>
+<li class="list-item"><strong>模型只管想、只管规划（Supply of Intelligence）</strong>；</li>
+<li class="list-item"><strong>能否执行、何时执行、改动什么，由独立网关裁决（Authority Over It）</strong>；</li>
+<li class="list-item">配备<strong>单点网关、三态策略（放行/审批/硬阻断）、密码学参数绑定、一键全局急停（Kill Switch）与防篡改审计哈希链</strong>，并首个全面兼容 Anthropic 开源的标准 <strong>Model Context Protocol (MCP)</strong>。</li>
+<hr class="divider" />
+<h2 class="section-title">二、 行业背景与核心痛点 (Problem & Market Need)</h2>
+<h3 class="subsection-title">2.1 大模型进入 Agent 落地深水区</h3>
+<p>2024–2026 年，大模型技术的演进迅速从“单轮对话生成”向“自主智能体（Autonomous Agents）”跃迁。企业不再满足于 AI 聊天，而是要求 Agent 深入真实业务流：查询数据库、发送商务邮件、调用 ERP/CRM、批量生成工单、自动化运维服务器。</p>
+<h3 class="subsection-title">2.2 企业落地 Agent 的“三大死亡陷阱”</h3>
+<p>然而，在真实政企客户落地过程中，AI Agent 普遍面临以下致命阻碍，导致<strong>技术可行但业务不敢上线</strong>：</p>
+<pre class="code-block "><code>                 【传统 Agent 面临的安全死锁】
+                 
+     用户/外部输入 ───&gt;  大模型 (LLM)  ───&gt;  真实业务系统 API
+                           │
+             ┌─────────────┴─────────────┐
+             ▼                           ▼
+      【间接提示词注入】             【幻觉越权操作】
+    数据中的黑客诱导指令           误删数据库/滥发未授权邮件
+             │                           │
+             └─────────────┬─────────────┘
+                           ▼
+              【企业不敢放权，落地停滞】</code></pre>
+<li class="ordered-item"><strong>间接提示词注入（Indirect Prompt Injection）防不胜防</strong>：</li>
+<p>黑客将恶意指令潜伏在正常业务数据中（例如：客户资料备注、求职简历、客服工单文本）。当 Agent 读取该数据进行总结时，注入指令触发，诱导 Agent 调用高危导出 API，泄露全量商业机密。</p>
+<li class="ordered-item"><strong>模型幻觉与不可逆写操作（Hallucinated Actions）</strong>：</li>
+<p>LLM 的概率输出特性意味着无法保证 100% 确定性。一旦 Agent 在调用金融转账、邮件群发、数据删除等写操作时产生幻觉，将直接造成不可逆的经济损失与合规法律风险。</p>
+<li class="ordered-item"><strong>黑盒运行与责任无法溯源（Audit & Compliance Void）</strong>：</li>
+<p>企业内部缺乏统一的可视化监控台。当事故发生时，无法确认是模型决策失误、工具逻辑漏洞还是外部恶意篡改，缺乏符合合规监管的证据链条。</p>
+<hr class="divider" />
+<h2 class="section-title">三、 产品哲学与技术架构 (Solution & Architecture)</h2>
+<p>Agent Guard 借鉴了计算机安全领域 1970 年代经典的 <strong>引用监视器（Reference Monitor）</strong> 思想：<strong>任何程序都不得绕过或篡改执行其权限的机制</strong>。</p>
+<h3 class="subsection-title">3.1 核心拓扑架构</h3>
+<pre class="code-block "><code>                    ┌─ Web 控制台（实时运行视图，SSE 事件流） ─┐
+                    │  工具请求卡片 → 策略判定 → 内联审批/拒绝  │
+                    │  全局急停按钮 · 实时审计时间线            │
+                    └──────────────────┬──────────────────────┘
+                                       │ 人工决策 / 急停
+用户任务 ── Agent ──→  单一网关 gateway.py  ←── 外部 MCP 客户端（/mcp/sse）
+（演示/LLM/        propose → policy.evaluate → allow 直接执行
+  MCP）            → needs_approval → 审批单 → 阻塞等待人工（可配置超时）
+                   → deny → 拒绝 + 审计
+                          ↓
+                    受控执行器（执行前复查：急停→策略→审批绑定）
+                          ↓
+                    真实/模拟业务系统 → 审计日志（哈希链，可检测篡改）
+                          ↓
+                    /api/events（SSE，事件源 = 审计表）</code></pre>
+<h3 class="subsection-title">3.2 架构三大铁律</h3>
+<li class="ordered-item"><strong>单一入口（Single Adjudication Entry）</strong>：</li>
+<p><code>gateway.adjudicate()</code> 是所有受保护工具调用的唯一合法入口。无论是内置 Agent、真实 LLM 还是外部 MCP 客户端，均无任何直通底层执行器的物理路径。</p>
+<li class="ordered-item"><strong>执行前复查（Pre-execution Verification）</strong>：</li>
+<p>即使某个操作在先前获得了人工审批，在执行器触发的前一毫秒，系统仍会强制复核：当前是否处于急停状态？审批参数是否被篡改？策略是否依然有效？</p>
+<li class="ordered-item"><strong>审计即真实（Audit as Ground Truth）</strong>：</li>
+<p>实时 Web 事件总线（SSE）直接订阅数据库审计表，绝不在前端模拟或伪造状态，每一条前端动画均严格映射一次后端持久化写入。</p>
+<hr class="divider" />
+<h2 class="section-title">四、 六大核心功能与安全壁垒 (Core Features & Moats)</h2>
+<div class="table-container"><table><thead><tr>
+<th>#</th>
+<th>核心功能</th>
+<th>技术实现与安全语义</th>
+<th>业务价值</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>1</strong></td>
+<td><strong>单一网关强制裁决</strong></td>
+<td><code>gateway.py</code> 统筹裁决，外置策略引擎，前端非安全边界</td>
+<td>彻底封死 Agent 直连数据库与第三方 API 的可能性</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td><strong>三态自适应策略</strong></td>
+<td><code>allow</code>（安全读操作直通）、<code>needs_approval</code>（敏感写操作挂起）、<code>deny</code>（越权导出硬阻断）</td>
+<td>兼顾业务运转效率与高危风险阻断</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td><strong>密码学参数绑定</strong></td>
+<td>审批单绑定 <code>scope_hash = sha256(tool + canonical_json(params))</code>，一次一用，30分钟 TTL</td>
+<td>防止“特洛伊木马式”审批篡改（批的是A，执行的却是B）</td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td><strong>全局人工急停制动</strong></td>
+<td>一键紧急制动，所有未开始动作转入 <code>blocked_by_stop</code> 终态，仅允许管理员显式恢复</td>
+<td>在系统失控或遭受未知攻击时秒级熔断止损</td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td><strong>不可篡改审计哈希链</strong></td>
+<td>每一条审计事件包含前序事件的 SHA-256 哈希，构成轻量级账本链条</td>
+<td>提供符合等保与金融合规要求的“可检测篡改”审计凭证</td>
+</tr>
+<tr>
+<td><strong>6</strong></td>
+<td><strong>成本与调用熔断</strong></td>
+<td><code>llm_budget.py</code> 实现每日调用硬上限、单任务步数上限与一键停用</td>
+<td>防止死循环调用导致百万 Token 天价账单</td>
+</tr>
+</tbody></table></div>
+<hr class="divider" />
+<h2 class="section-title">五、 协议标准与生态兼容 (MCP Ecosystem Integration)</h2>
+<h3 class="subsection-title">5.1 首个原生集成 Anthropic Model Context Protocol (MCP) 的安全平台</h3>
+<p>Model Context Protocol（MCP）是 2024 年底由 Anthropic 提出、目前正迅速成为全球标准的 AI 协议，旨在统一大模型与外部工具/数据源的连接规范。</p>
+<p>Agent Guard 在服务端原生挂载了标准 MCP 适配层（<code>/mcp/sse</code>）：</p>
+<li class="list-item"><strong>工具标准发现</strong>：提供 <code>crm_read</code>、<code>crm_update</code>、<code>mail_send</code>、<code>crm_export_all</code> 等标准工具声明；</li>
+<li class="list-item"><strong>全生态无缝即插即用</strong>：任何支持 MCP 的外部 Agent（例如：Claude Desktop、Cursor、Cline、自研 Agent 框架）无需改造，只需在配置文件中填入 Agent Guard 的端点，即可瞬间接入受保护的企业工具库；</li>
+<li class="list-item"><strong>统一权限管控</strong>：外部客户端调用工具时，必须阻塞等待 Agent Guard 网关的裁决或人工审批，真正实现<strong>“跨生态、一站式”</strong>的安全管辖。</li>
+<hr class="divider" />
+<h2 class="section-title">六、 竞品对比与核心差异化优势 (Competitive Analysis)</h2>
+<p>当前市场上关于“大模型安全”的产品主要集中在内容安全层（如 OpenAI Moderation, Meta Llama Guard, NeMo Guardrails），与 Agent Guard 存在代际差异：</p>
+<pre class="code-block mermaid"><code>graph TD
+    A["大模型安全防御演进"] --&gt; B["第一代：文本级护栏 (Text Moderation)"]
+    A --&gt; C["第二代：模型内对齐 (Safety Alignment / RLHF)"]
+    A --&gt; D["第三代：Agent Guard 执行层网关 (Execution Gateway)"]
+
+    B -.-&gt;|仅检测敏感词，无法防御业务越权| E["缺陷：易被编码越狱绕过"]
+    C -.-&gt;|依赖模型内部道德概率，非100%可靠| F["缺陷：计算幻觉无法杜绝"]
+    D ==&gt;|物理阻断 + 人机闭环 + 密码学存证| G["优势：确定性控制，零信任安全"]</code></pre>
+<h3 class="subsection-title">竞品核心维度深度对照表</h3>
+<div class="table-container"><table><thead><tr>
+<th>评估维度</th>
+<th>传统文本级 Guardrail (如 Llama Guard)</th>
+<th>提示词护栏系统 (如 NeMo Guardrails)</th>
+<th><strong>Agent Guard 执行控制平台</strong></th>
+</tr></thead><tbody>
+<tr>
+<td><strong>安全锚点</strong></td>
+<td>输入/输出的自然语言文本</td>
+<td>对话流程脚本与模型微调</td>
+<td><strong>真实系统 API 与执行器物理层</strong></td>
+</tr>
+<tr>
+<td><strong>防 Prompt Injection</strong></td>
+<td>脆弱（易被 Base64、多语言、角色扮演越狱）</td>
+<td>较脆弱（增加系统提示词复杂度）</td>
+<td><strong>硬阻断（网关策略直接 deny，无视模型是否被骗）</strong></td>
+</tr>
+<tr>
+<td><strong>高危写操作保护</strong></td>
+<td>无机制（只管生成，不管调用）</td>
+<td>仅能建议拒绝</td>
+<td><strong>强制挂起（Human-in-the-loop + 密码学一次性令牌）</strong></td>
+</tr>
+<tr>
+<td><strong>系统失控紧急制动</strong></td>
+<td>无（只能强杀服务器进程）</td>
+<td>依赖配置重新加载</td>
+<td><strong>全局一键急停（Kill Switch）秒级止损</strong></td>
+</tr>
+<tr>
+<td><strong>审计与责任认定</strong></td>
+<td>无或普通文本日志</td>
+<td>普通记录</td>
+<td><strong>密码学哈希链，保证防篡改与司法级存证</strong></td>
+</tr>
+<tr>
+<td><strong>跨生态适配</strong></td>
+<td>需硬编码集成在特定框架内</td>
+<td>绑定特定 Python 生态</td>
+<td><strong>标准 MCP 协议，支持任意外部 Agent 客户端</strong></td>
+</tr>
+</tbody></table></div>
+<hr class="divider" />
+<h2 class="section-title">七、 目标客群与典型落地场景 (Target Market & Use Cases)</h2>
+<h3 class="subsection-title">7.1 目标企业客户画像</h3>
+<p>Agent Guard 聚焦于<strong>对业务误操作零容忍、对数据资产高度敏感、受严格合规监管</strong>的企业客户：</p>
+<li class="list-item"><strong>银行、证券与保险机构</strong>：需要 Agent 自动化分析流水，但严禁 Agent 自主发起资金划转或全量客户数据导出；</li>
+<li class="list-item"><strong>大型企事业单位与政务部门</strong>：需要 Agent 处理公文与工单，但涉及发文、签章、对外公告必须经过人类岗位确认；</li>
+<li class="list-item"><strong>医疗健康与医药研发</strong>：严防患者隐私数据通过 Agent 交互泄露，所有处方与分析动作需留存不可篡改审计链条；</li>
+<li class="list-item"><strong>高科技出海与跨境企业</strong>：满足 GDPR、网络安全法与数据出境安全评估标准。</li>
+<h3 class="subsection-title">7.2 典型落地业务场景</h3>
+<h4 class="sub-subsection-title">场景 1：企业 CRM 与外呼销售 Agent</h4>
+<li class="list-item"><strong>只读分析</strong>：Agent 自动读取客户历史消费行为，生成画像（<code>allow</code> 放行）。</li>
+<li class="list-item"><strong>敏感触达</strong>：Agent 生成针对性挽留邮件与优惠券，触发人工审批通道，销售主管在企业微信/飞书上一键确认后外发（<code>needs_approval</code> 闭环）。</li>
+<li class="list-item"><strong>数据防窃</strong>：黑客通过恶意客户名嵌入 Prompt Injection 企图诱导下载企业全量客资，网关瞬间拦截并报警（<code>deny</code> 阻断）。</li>
+<h4 class="sub-subsection-title">场景 2：IT 基础设施与自动化运维 Agent (DevOps / SRE)</h4>
+<li class="list-item">Agent 自主排查日志并汇总故障原因；</li>
+<li class="list-item">一旦 Agent 计划执行重启集群、格式化硬盘或修改防火墙规则，必须进入审批，并受全局急停按钮随时监控。</li>
+<hr class="divider" />
+<h2 class="section-title">八、 商业模式与盈利路径 (Business & Revenue Model)</h2>
+<p>Agent Guard 采用成熟的 <strong>Open-Core（开源内核 + 商业企业版）</strong> 商业模式：</p>
+<pre class="code-block "><code>                    ┌───────────────────────────────┐
+                    │  开源社区版 (Open-Source)     │
+                    │  • 核心网关 gateway.py        │
+                    │  • 基础三态策略与单节点 SQLite │
+                    │  • 标准 MCP 接口与 Web 控制台  │
+                    └───────────────┬───────────────┘
+                                    │ 开发者生态沉淀 / 自下而上获客
+                                    ▼
+                    ┌───────────────────────────────┐
+                    │  企业商业版 (Commercial SaaS)  │
+                    │  • 分布式高可用网关集群       │
+                    │  • 飞书/钉钉/企业微信审批流直连│
+                    │  • 细粒度 RBAC 权限与审计导出  │
+                    │  • 动态策略热重载与多租户管理 │
+                    └───────────────┬───────────────┘
+                                    │ 标杆客户私有化落地
+                                    ▼
+                    ┌───────────────────────────────┐
+                    │  政企私有化部署与信创合规定制 │
+                    │  • 纯离线环境 / 涉密内网部署   │
+                    │  • 军工/金融特定加密算法与国密 │
+                    │  • 年度维保与专业实施咨询服务 │
+                    └───────────────────────────────┘</code></pre>
+<h3 class="subsection-title">8.1 盈利管道设计</h3>
+<li class="ordered-item"><strong>开发者版（免费开源）</strong>：开源核心网关与开发工具链，快速占据 GitHub、开发者社区与 MCP 生态心智；</li>
+<li class="ordered-item"><strong>企业 SaaS 订阅版（按席位/流量计费）</strong>：</li>
+<li class="list-item">基础版：¥1,999 / 月（支持管理 5 个 Agent 实例，10 万次/月调用裁决）；</li>
+<li class="list-item">专业版：¥5,999 / 月（支持管理 20 个 Agent 实例，集成飞书/钉钉审批流，保留 1 年哈希链审计）；</li>
+<li class="ordered-item"><strong>私有化合规部署与信创许可（按实例/年费）</strong>：</li>
+<li class="list-item">针对大型金融机构与政企客户，单套部署许可 ¥20万 ~ ¥50万，包含定制策略开发与信创数据库适配。</li>
+<hr class="divider" />
+<h2 class="section-title">九、 创始人与团队背景 (Founder & Team Profile)</h2>
+<h3 class="subsection-title">创始人：易星衍 (YIXINGYAN)</h3>
+<li class="list-item"><strong>个人品牌与研究站点</strong>：<a href="https://yixingyan.com/" target="_blank">https://yixingyan.com/</a></li>
+<li class="list-item"><strong>专业博客与思想库</strong>：<a href="https://blog.yixingyan.com/" target="_blank">https://blog.yixingyan.com/</a></li>
+<li class="list-item"><strong>定位</strong>：<strong>AI-Native Builder</strong>，长期专注企业 AI 落地、AI 原生构建与出海数字基础设施。</li>
+<li class="list-item"><strong>核心工程与行业实践经历</strong>：</li>
+<li class="list-item"><strong>政企客户服务与大型项目交付</strong>：具备政企行业客户服务、信创项目推进及交付验收经历；参与行业规范编制与安全白皮书撰写。</li>
+<li class="list-item"><strong>前沿 AI 工程研究与实践 (AI Engineering)</strong>：</li>
+<p>* 深度研究企业级 Agent 评估体系（Eval）、Human-in-the-loop 人机协同范式、FDE 与前线共创模式；</p>
+<p>* 具备完整的 Planner / Executor 架构拆解、Context Engineering、多智能体协同（Multi-Agent）与可信执行架构落地经验；</p>
+<p>* 践行“把真实业务问题做成可运行系统”的 AI-Native Engineering 理念。</p>
+<hr class="divider" />
+<h2 class="section-title">十、 财务预测与发展路线图 (Roadmap & Milestones 2026-2027)</h2>
+<h3 class="subsection-title">10.1 技术与产品路线图</h3>
+<div class="table-container"><table><thead><tr>
+<th>时间节点</th>
+<th>版本与阶段</th>
+<th>核心交付里程碑</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>2026 Q4 (当前)</strong></td>
+<td><strong>V2.0 原型交付</strong></td>
+<td>单一网关重构、三态策略引擎、密码学 scope_hash 审批、标准 MCP 接入、全量 50 项测试通过</td>
+</tr>
+<tr>
+<td><strong>2027 Q1</strong></td>
+<td><strong>V2.5 企业连接器</strong></td>
+<td>深度集成飞书、钉钉、企业微信与 Slack 移动端审批卡片；支持企业单点登录 (SSO) 与 RBAC</td>
+</tr>
+<tr>
+<td><strong>2027 Q2</strong></td>
+<td><strong>V3.0 智能策略引擎</strong></td>
+<td>引入“影子运行模式（Shadow Mode）”，AI 自动学习历史人工审批记录并建议网关放行规则</td>
+</tr>
+<tr>
+<td><strong>2027 Q3</strong></td>
+<td><strong>V3.5 分布式集群</strong></td>
+<td>支持万级 QPS 并发网关路由，支持国密 SM2/SM3/SM4 审计算法与信创环境原生认证</td>
+</tr>
+</tbody></table></div>
+<h3 class="subsection-title">10.2 商业化收入预期</h3>
+<li class="list-item"><strong>第一年 (2027)</strong>：沉淀 10 家中大型标杆付费客户（涵盖金融与头部出海电商），实现年 ARR ¥150 万。</li>
+<li class="list-item"><strong>第二年 (2028)</strong>：依托 MCP 生态构建企业安全网关标准标准件，服务 80+ 付费企业，ARR 突破 ¥600 万。</li>
+<hr class="divider" />
+<h2 class="section-title">十一、 风险控制与总结展望 (Risk Management & Conclusion)</h2>
+<h3 class="subsection-title">11.1 风险应对预案</h3>
+<li class="ordered-item"><strong>模型生态碎片化风险</strong>：各大模型厂商协议差异可能导致接入难度增加。</li>
+<p><em>对策</em>：全面拥抱中立、开源的 <strong>Model Context Protocol (MCP)</strong> 标准，以标准协议向下兼容所有主流大模型生态。</p>
+<li class="ordered-item"><strong>网关延迟性能损耗</strong>：增加一层网关裁决是否会显著拖慢 Agent 运行速度？</li>
+<p><em>对策</em>：网关采用极轻量化的内存策略评估器，非审批类动作判定耗时低于 2ms，对业务响应无感知。</p>
+<h3 class="subsection-title">11.2 参赛总结</h3>
+<div class="callout"><p><strong>“智能的供给，与执行的权力分开。”</strong></p></div>
+<div class="callout"><p>这不仅是行业领袖的前瞻预言，更是千行百业拥抱 AI Agent 必须跨越的信任鸿沟。</p></div>
+<div class="callout"><p><strong>Agent Guard 已经给出了工程化解法的最优答案。</strong></p></div>
+</div>
+
+</body>
+</html>

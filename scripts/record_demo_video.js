@@ -5,8 +5,13 @@ const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-const PLAYWRIGHT_PATH = 'C:/Users/冯先生/.gemini/antigravity/scratch/SyncVeroHot-Promo/node_modules/playwright';
-const FFMPEG_PATH = 'C:/Users/冯先生/AppData/Local/ms-playwright/ffmpeg-1013/ffmpeg-win64.exe';
+const userHome = process.env.USERPROFILE || process.env.HOME || '';
+const defaultPlaywright = path.join(userHome, '.gemini/antigravity/scratch/SyncVeroHot-Promo/node_modules/playwright');
+const PLAYWRIGHT_PATH = process.env.PLAYWRIGHT_PATH || (fs.existsSync(defaultPlaywright) ? defaultPlaywright : 'playwright');
+
+const localAppData = process.env.LOCALAPPDATA || path.join(userHome, 'AppData/Local');
+const defaultFfmpeg = path.join(localAppData, 'ms-playwright/ffmpeg-1013/ffmpeg-win64.exe');
+const FFMPEG_PATH = process.env.FFMPEG_PATH || (fs.existsSync(defaultFfmpeg) ? defaultFfmpeg : 'ffmpeg');
 const ROOT_DIR = path.resolve(__dirname, '..');
 const TEMP_VIDEO_DIR = path.join(ROOT_DIR, 'docs', 'video_temp');
 const FINAL_MP4_PATH = path.join(ROOT_DIR, 'docs', 'Agent_Guard_Demo_1080p.mp4');

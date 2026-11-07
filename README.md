@@ -9,7 +9,7 @@
 [![React 18](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB.svg)](frontend/)
 [![Model Context Protocol](https://img.shields.io/badge/Protocol-Anthropic%20MCP-8A2BE2.svg)](docs/MCP.md)
 [![Tests Passing](https://img.shields.io/badge/Pytest-50%2F50%20Passing-success.svg)](backend/tests/)
-[![License MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: Proprietary / All Rights Reserved](https://img.shields.io/badge/License-All%20Rights%20Reserved%20(非商用)-red.svg)](LICENSE)
 
 ---
 
@@ -125,3 +125,12 @@ cd frontend && npm run build
 - **主创**：[易星衍 / YIXINGYAN — AI Native Builder](https://yixingyan.com/)
 - **专业领域**：企业 AI 落地 · AI 原生构建 · 出海数字基础设施 · 计算机可信执行工程
 - **联系与探讨**：[seniol9368187@gmail.com](mailto:seniol9368187@gmail.com) ｜ 个人主页：[https://yixingyan.com/](https://yixingyan.com/)
+
+---
+
+## 版权与非商业许可声明 (License & Rights Reserved)
+
+本项目源码在 GitHub 上公开供**黑客松赛事评审、学术交流、技术审计与个人学习**使用。  
+**版权所有 (c) 2026 易星衍 (YIXINGYAN)。保留所有权利。**
+
+> 未经版权所有人的书面授权许可，**严禁任何组织或个人将本项目全部或部分代码用于商业化运营、SaaS 服务、企业内网商用集成、贴牌再分发或转售**。商业授权与合作请联系创作者。详见 [LICENSE](LICENSE)。

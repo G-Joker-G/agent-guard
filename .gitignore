@@ -17,3 +17,7 @@ dist/
 
 # Impeccable skill (project-local tooling, not product code)
 .impeccable/
+
+# Submission artifacts
+submission_package/
+*.zip

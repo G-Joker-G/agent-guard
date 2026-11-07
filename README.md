@@ -17,7 +17,7 @@
 
 - 📄 **商业计划书 (Business Plan)**：[Agent_Guard_商业计划书.pdf](docs/Agent_Guard_商业计划书.pdf) ｜ [Markdown 完整版](docs/BUSINESS_PLAN.md)
 - 🚀 **评委 3 分钟免 Key 极速评测指南**：[docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md) *(无需申请外部 API Key，开箱即测)*
-- 🎬 **演示视频分镜与逐秒解说词脚本**：[docs/VIDEO_SCRIPT.md](docs/VIDEO_SCRIPT.md)
+- 🎬 **演示视频 (1080P MP4 交付件)**：[docs/Agent_Guard_Demo_1080p.mp4](docs/Agent_Guard_Demo_1080p.mp4) ｜ [分镜与解说词脚本](docs/VIDEO_SCRIPT.md)
 - 📐 **系统架构与技术白皮书**：[docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) ｜ [测试报告 (50/50)](docs/TEST_REPORT.md)
 
 ---

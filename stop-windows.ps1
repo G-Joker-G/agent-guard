@@ -1,4 +1,5 @@
-# Agent Guard - PowerShell 停止脚本
+﻿# Agent Guard - PowerShell 停止脚本
+# UTF-8 with BOM
 Set-Location -Path $PSScriptRoot
 
 Write-Host "===================================================" -ForegroundColor Cyan
@@ -22,4 +23,5 @@ foreach ($port in @(8000, 5173)) {
     }
 }
 
-Write-Host "`nAgent Guard 本地服务已全部停止。`n" -ForegroundColor Green
+Write-Host "`n[OK] Agent Guard 本地服务已全部停止。`n" -ForegroundColor Green
+Start-Sleep -Seconds 2
